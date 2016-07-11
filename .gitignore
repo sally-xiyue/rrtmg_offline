@@ -1,0 +1,17 @@
+.DS_Store
+*.pkl
+*.pyc
+*.nc
+*.txt
+*.so
+*.o
+*.c
+*.in
+*.png
+*.pdf
+old_code/
+mlm_code/
+build/
+les_diag/
+.idea
+*~
