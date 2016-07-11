@@ -1,0 +1,1 @@
+This is a mixed-layer model for atmospheric boundary layer. It uses liquid water potential temperature (theta_l), total water specific humidity (qt), and boundary layer height (zi) as prognostic variables. The time integration second order Runge-Kutta is using code from PyCLES. Radiation scheme is the RRTMG code also implemented in PyCLES.
