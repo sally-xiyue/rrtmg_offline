@@ -16,7 +16,7 @@ cimport Radiation
 include 'parameters.pxi'
 cimport timestepping
 from NetCDFIO cimport NetCDFIO_Stats
-from libc.math cimport fmin
+from libc.math cimport fmin, abs
 
 # cdef extern from "mlm_thermodynamic_functions.h":
 
@@ -57,6 +57,11 @@ cdef class MixedLayerModel:
             self.efficiency = namelist['entrainment']['efficiency']
         except:
             self.efficiency = 0.7
+
+        try:
+            self.w_star = namelist['entrainment']['w_star']
+        except:
+            self.w_star = 0.7
 
 
         self.dz = 5.0  # z grid size
@@ -120,12 +125,13 @@ cdef class MixedLayerModel:
             double zi = self.values[0]
             double thetal = self.values[1]
             double qt = self.values[2]
-            double dthetal = self.thetal_ft - thetal
+            double dthetal = 0.0
             double dfrad = 0.0
             double w_ls
             double w_e
-            Py_ssize_t idx, k
+            Py_ssize_t idx, k, idx_top
             double [:] tmp = np.zeros((self.nz,), dtype=np.double)
+            double [:] tmp2 = np.zeros((self.nz,), dtype=np.double)
             double qt_ft
             double temp
 
@@ -147,14 +153,19 @@ cdef class MixedLayerModel:
         # get radiative flux jump at the cloud top
         for k in xrange(self.nz):
             tmp[k] = self.z[k] - zi
-        idx = (np.abs(tmp)).argmin()
+            tmp2[k] = self.z[k] - zi*1.05
+        idx = (abs(tmp)).argmin()
+        idx_top = (abs(tmp2)).argmin()
 
-        dfrad = Ra.net_lw_flux[idx+3] - Ra.net_lw_flux[0]
+        dfrad = Ra.net_lw_flux[idx+3] - Ra.net_lw_flux[idx]
+        dthetal = self.thetal[idx+3] - self.thetal[idx]
 
         temp = self.thetal_ft * (self.pressure[idx]/p_tilde) ** (Rd/cpd)
         qt_ft = qv_unsat(self.pressure[idx], saturation_vapor_pressure(temp) * self.rh_ft)
 
-        w_e = entrainment_rate(self.efficiency, dfrad, dthetal, thetal, self.rho0)
+        # w_e = entrainment_rate(self.efficiency, dfrad, dthetal, thetal, self.rho0)
+        w_e = entrainment_moeng(self.temperature[0], zi, dthetal, self.w_star, dfrad, self.rho0)
+
         w_ls = get_ls_subsidence(self.z, zi, self.div_frac)[idx]
 
         self.tendencies[0] = w_e + w_ls
@@ -210,3 +221,6 @@ cdef double entrainment_rate(double efficiency, double dfrad, double dthetal, do
     w_e = efficiency * dfrad / cpd / rho0 / dthetal
     return w_e
 
+cdef double entrainment_moeng(double T0, double zi, double dthetal, double w_star, double dfrad, double rho0):
+    cdef double A = 0.56
+    return A*g*zi*dthetal/T0/w_star+dfrad/rho0/cpd/dthetal

@@ -15,3 +15,4 @@ build/
 les_diag/
 .idea
 *~
+plot_script.py

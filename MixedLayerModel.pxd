@@ -30,6 +30,7 @@ cdef class MixedLayerModel:
         double [:] values
         double [:] tendencies
         double efficiency
+        double w_star
 
     # cdef:
     #     # Radiation.Radiation radiation
