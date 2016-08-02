@@ -16,7 +16,7 @@ cimport Radiation
 include 'parameters.pxi'
 cimport timestepping
 from NetCDFIO cimport NetCDFIO_Stats
-from libc.math cimport fmin, abs
+from libc.math cimport fmin, fabs
 
 # cdef extern from "mlm_thermodynamic_functions.h":
 
@@ -154,11 +154,11 @@ cdef class MixedLayerModel:
         for k in xrange(self.nz):
             tmp[k] = self.z[k] - zi
             tmp2[k] = self.z[k] - zi*1.05
-        idx = (abs(tmp)).argmin()
-        idx_top = (abs(tmp2)).argmin()
+        idx = (np.abs(tmp)).argmin()
+        idx_top = (np.abs(tmp2)).argmin()
 
-        dfrad = Ra.net_lw_flux[idx+3] - Ra.net_lw_flux[idx]
-        dthetal = self.thetal[idx+3] - self.thetal[idx]
+        dfrad = Ra.net_lw_flux[idx_top] - Ra.net_lw_flux[idx]
+        dthetal = self.thetal[idx_top] - self.thetal[idx]
 
         temp = self.thetal_ft * (self.pressure[idx]/p_tilde) ** (Rd/cpd)
         qt_ft = qv_unsat(self.pressure[idx], saturation_vapor_pressure(temp) * self.rh_ft)
