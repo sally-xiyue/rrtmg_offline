@@ -168,7 +168,7 @@ cdef class MixedLayerModel:
         # w_e = entrainment_rate(self.efficiency, dfrad, dthetal, thetal, self.rho0)
         w_e = entrainment_moeng(self.temperature[0], zi, dthetal, self.w_star, dfrad, self.rho0)
 
-        w_ls = get_ls_subsidence(self.z, zi, self.div_frac)[idx]
+        w_ls = get_ls_subsidence(self.z, self.zi_i, self.div_frac)[idx]
 
         self.tendencies[0] = w_e + w_ls
         self.tendencies[1] = (w_e * dthetal - (Ra.net_lw_flux[idx_top] - Ra.net_lw_flux[0])/cpd/self.rho0)/zi
