@@ -171,7 +171,7 @@ cdef class MixedLayerModel:
         w_ls = get_ls_subsidence(self.z, zi, self.div_frac)[idx]
 
         self.tendencies[0] = w_e + w_ls
-        self.tendencies[1] = (w_e * dthetal - dfrad/cpd/self.rho0)/zi
+        self.tendencies[1] = (w_e * dthetal - (Ra.net_lw_flux[idx_top] - Ra.net_lw_flux[0])/cpd/self.rho0)/zi
         self.tendencies[2] = w_e * dqt/zi
 
         # self.count += 1
