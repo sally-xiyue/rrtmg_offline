@@ -127,12 +127,13 @@ cdef class MixedLayerModel:
             double qt = self.values[2]
             double dthetal = 0.0
             double dfrad = 0.0
+            double dqt = 0.0
             double w_ls
             double w_e
             Py_ssize_t idx, k, idx_top
             double [:] tmp = np.zeros((self.nz,), dtype=np.double)
             double [:] tmp2 = np.zeros((self.nz,), dtype=np.double)
-            double qt_ft
+            # double qt_ft
             double temp
 
         # get profiles
@@ -159,9 +160,10 @@ cdef class MixedLayerModel:
 
         dfrad = Ra.net_lw_flux[idx_top] - Ra.net_lw_flux[idx]
         dthetal = self.thetal[idx_top] - self.thetal[idx]
+        dqt = self.qt[idx_top] - self.qt[idx]
 
         temp = self.thetal_ft * (self.pressure[idx]/p_tilde) ** (Rd/cpd)
-        qt_ft = qv_unsat(self.pressure[idx], saturation_vapor_pressure(temp) * self.rh_ft)
+        # qt_ft = qv_unsat(self.pressure[idx], saturation_vapor_pressure(temp) * self.rh_ft)
 
         # w_e = entrainment_rate(self.efficiency, dfrad, dthetal, thetal, self.rho0)
         w_e = entrainment_moeng(self.temperature[0], zi, dthetal, self.w_star, dfrad, self.rho0)
@@ -170,7 +172,7 @@ cdef class MixedLayerModel:
 
         self.tendencies[0] = w_e + w_ls
         self.tendencies[1] = (w_e * dthetal - dfrad/cpd/self.rho0)/zi
-        self.tendencies[2] = w_e * (qt_ft - qt)/zi
+        self.tendencies[2] = w_e * dqt/zi
 
         # self.count += 1
         # print('Timestep ' + str(self.count) + ' of integration')
