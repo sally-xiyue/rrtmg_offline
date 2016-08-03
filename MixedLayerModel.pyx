@@ -223,4 +223,4 @@ cdef double entrainment_rate(double efficiency, double dfrad, double dthetal, do
 
 cdef double entrainment_moeng(double T0, double zi, double dthetal, double w_star, double dfrad, double rho0):
     cdef double A = 0.56
-    return A*g*zi*dthetal/T0/w_star+dfrad/rho0/cpd/dthetal
+    return A*w_star**3*T0/(g*zi*dthetal)+dfrad/rho0/cpd/dthetal
