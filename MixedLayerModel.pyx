@@ -81,6 +81,7 @@ cdef class MixedLayerModel:
         self.z_interface[0] = self.dz/2
 
         # self.pressure = get_pressure(self.z, self.p_surface, self.rho0)
+        self.pressure = np.zeros_like(self.z)
         self.pressure_i = get_pressure(self.z_interface, self.p_surface, self.rho0)
 
 
