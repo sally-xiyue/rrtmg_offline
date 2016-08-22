@@ -17,6 +17,7 @@ include 'parameters.pxi'
 cimport timestepping
 from NetCDFIO cimport NetCDFIO_Stats
 from libc.math cimport fmin, fabs
+from scipy.integrate import odeint
 
 # cdef extern from "mlm_thermodynamic_functions.h":
 
@@ -74,13 +75,12 @@ cdef class MixedLayerModel:
         self.rho0 = self.p_surface / Rd / self.t_surface
         self.qt_surface = qv_unsat(self.p_surface, saturation_vapor_pressure(self.t_surface) * self.rh_i)
 
-        self.pressure = get_pressure(self.z, self.p_surface, self.rho0)
-
         self.z_interface = np.zeros(self.nz+1)
         for i in xrange(self.nz):
             self.z_interface[i+1] = self.z[i] + 2.5
         self.z_interface[0] = self.dz/2
 
+        # self.pressure = get_pressure(self.z, self.p_surface, self.rho0)
         self.pressure_i = get_pressure(self.z_interface, self.p_surface, self.rho0)
 
 
@@ -90,6 +90,7 @@ cdef class MixedLayerModel:
         self.qi = np.zeros_like(self.pressure)
         self.thetal = np.zeros_like(self.pressure)
         self.qt = np.zeros_like(self.pressure)
+        self.rho = np.zeros_like(self.pressure)
 
         self.values = np.zeros((3,), dtype=np.double)
         self.tendencies = np.zeros((3,), dtype=np.double)
@@ -103,7 +104,46 @@ cdef class MixedLayerModel:
         # self.radiation_frequency = 10.0
         # self.next_radiation_calculate = 0.0
 
-    cpdef initialize(self, NetCDFIO_Stats NS):
+    def initialize(self, NetCDFIO_Stats NS):
+
+        # Get reference density profile
+        cdef:
+            double zi = self.values[0]
+            double thetal = self.values[1]
+            double qt = self.values[2]
+            Py_ssize_t idx, k
+            double [:] tmp = np.zeros((self.nz,), dtype=np.double)
+            double [:] alpha = np.zeros((self.nz,), dtype=np.double)
+
+        # Get pressure profile
+        def rhs(p, z):
+            T, ql = sat_adjst(self.p_surface, self.thetal_i, self.qt_surface)
+            return -g/(Rd*T*(1.0 - self.qt_surface + eps_vi*(self.qt_surface-ql)))
+
+        self.pressure = odeint(rhs, np.log(self.p_surface), self.z, hmax=1.0)[:, 0]
+        self.pressure = np.exp(self.pressure)
+
+        # Determine the cloud top level and above
+        for k in xrange(self.nz):
+            tmp[k] = self.z[k] - zi
+        idx = (np.abs(tmp)).argmin()
+
+        # get profiles
+        for k in xrange(self.nz):
+            if k <= idx:
+                self.temperature[k], self.ql[k] = sat_adjst(self.pressure[k], thetal, qt)
+                self.qt[k] = qt
+                self.thetal[k] = thetal
+            else:
+                self.thetal[k] = (self.thetal_ft + (zi - self.zi_i) * self.gamma_thetal) + \
+                                             (self.z[k] - zi) * self.gamma_thetal
+                self.temperature[k] = self.thetal[k] * (self.pressure[k] / p_tilde) ** (Rd / cpd)
+                self.qt[k] = qv_unsat(self.pressure[k], saturation_vapor_pressure(self.temperature[k]) * self.rh_ft)
+
+            self.qv[k] = self.qt[k] - self.ql[k]
+            alpha[k] = get_alpha(self.pressure[k], self.temperature[k], self.qt[k], self.qv[k])
+
+        self.rho = 1.0/np.array(alpha)
 
         NS.add_ts('zi')
         NS.add_ts('thetal_ml')

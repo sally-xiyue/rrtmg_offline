@@ -27,6 +27,7 @@ cdef class MixedLayerModel:
         double [:] qi
         double [:] thetal
         double [:] qt
+        double [:] rho
         double [:] values
         double [:] tendencies
         double efficiency
@@ -38,6 +39,6 @@ cdef class MixedLayerModel:
     #     double radiation_frequency
     #     double next_radiation_calculate
 
-    cpdef initialize(self, NetCDFIO_Stats NS)
+    # cpdef initialize(self, NetCDFIO_Stats NS)
     cpdef update(self, timestepping.TimeStepping TS, Radiation.Radiation Ra)
     cpdef stats_io(self, NetCDFIO_Stats NS)

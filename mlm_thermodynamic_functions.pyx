@@ -154,6 +154,8 @@ cdef qv_unsat(double p0, double pv):
 #
 #     return f_rad, f_heat
 
+cdef double get_alpha(double p0, double T, double qt, double qv):
+    return (Rd * T)/p0 * (1.0 - qt + eps_vi * qv)
 
 # large-scale subsidence
 cdef get_ls_subsidence(double [:] z, double zi_i, double div_frac):
