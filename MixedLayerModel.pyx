@@ -136,9 +136,16 @@ cdef class MixedLayerModel:
             # double qt_ft
             double temp
 
+        # Determine the cloud top level and above
+        for k in xrange(self.nz):
+            tmp[k] = self.z[k] - zi
+            tmp2[k] = self.z[k] - zi*1.05
+        idx = (np.abs(tmp)).argmin()
+        idx_top = (np.abs(tmp2)).argmin()
+
         # get profiles
         for k in xrange(self.nz):
-            if self.z[k] <= zi:
+            if k <= idx:
                 self.temperature[k], self.ql[k] = sat_adjst(self.pressure[k], thetal, qt)
                 self.qt[k] = qt
                 self.thetal[k] = thetal
@@ -150,14 +157,7 @@ cdef class MixedLayerModel:
 
             self.qv[k] = self.qt[k] - self.ql[k]
 
-
         # get radiative flux jump at the cloud top
-        for k in xrange(self.nz):
-            tmp[k] = self.z[k] - zi
-            tmp2[k] = self.z[k] - zi*1.05
-        idx = (np.abs(tmp)).argmin()
-        idx_top = (np.abs(tmp2)).argmin()
-
         dfrad = Ra.net_lw_flux[idx_top] - Ra.net_lw_flux[idx]
         dthetal = self.thetal[idx_top] - self.thetal[idx]
         dqt = self.qt[idx_top] - self.qt[idx]
