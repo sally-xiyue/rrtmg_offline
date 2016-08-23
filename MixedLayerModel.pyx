@@ -208,12 +208,12 @@ cdef class MixedLayerModel:
         # qt_ft = qv_unsat(self.pressure[idx], saturation_vapor_pressure(temp) * self.rh_ft)
 
         # w_e = entrainment_rate(self.efficiency, dfrad, dthetal, thetal, self.rho0)
-        w_e = entrainment_moeng(self.temperature[0], zi, dthetal, self.w_star, dfrad, self.rho0)
+        w_e = entrainment_moeng(self.temperature[0], zi, dthetal, self.w_star, dfrad, self.rho[idx])
 
         w_ls = get_ls_subsidence(self.z, self.zi_i, self.div_frac)[idx]
 
         self.tendencies[0] = w_e + w_ls
-        self.tendencies[1] = (w_e * dthetal - (Ra.net_lw_flux[idx_top] - Ra.net_lw_flux[0])/cpd/self.rho0)/zi
+        self.tendencies[1] = (w_e * dthetal - (Ra.net_lw_flux[idx_top] - Ra.net_lw_flux[0])/cpd/self.rho[idx])/zi
         self.tendencies[2] = w_e * dqt/zi
 
         # self.count += 1
@@ -251,20 +251,20 @@ cdef class MixedLayerModel:
         # Compute liquid water path
         with nogil:
             for k in xrange(kmin, kmax):
-                lwp += self.rho0 * self.ql[k] * self.dz
+                lwp += self.rho[k] * self.ql[k] * self.dz
 
         NS.write_ts('lwp', lwp)
 
         return
 
 
-cdef double entrainment_rate(double efficiency, double dfrad, double dthetal, double thetal, double rho0):
+cdef double entrainment_rate(double efficiency, double dfrad, double dthetal, double thetal, double rho):
     cdef:
         w_e
 
-    w_e = efficiency * dfrad / cpd / rho0 / dthetal
+    w_e = efficiency * dfrad / cpd / rho / dthetal
     return w_e
 
-cdef double entrainment_moeng(double T0, double zi, double dthetal, double w_star, double dfrad, double rho0):
+cdef double entrainment_moeng(double T0, double zi, double dthetal, double w_star, double dfrad, double rho):
     cdef double A = 0.56
-    return A*w_star**3*T0/(g*zi*dthetal)+dfrad/rho0/cpd/dthetal
+    return A*w_star**3*T0/(g*zi*dthetal)+dfrad/rho/cpd/dthetal

@@ -99,12 +99,12 @@ cdef class RadiationIsdac:
 
         f_rad[0] = f1 * exp(-q_1)
         for k in xrange(1, nz + 1):
-            q_1 += kap * mlm.rho0 * mlm.ql[k - 1] * mlm.dz
+            q_1 += kap * mlm.rho[k-1] * mlm.ql[k - 1] * mlm.dz
             f_rad[k] += f1 * exp(-q_1)
 
         f_rad[nz] += f0 * exp(-q_0)
         for k in xrange(nz - 1, -1, -1):
-            q_0 += kap * mlm.rho0 * mlm.ql[k] * mlm.dz
+            q_0 += kap * mlm.rho[k] * mlm.ql[k] * mlm.dz
             f_rad[k] += f0 * exp(-q_0)
 
         for k in xrange(nz):
@@ -564,7 +564,7 @@ cdef class Radiation:
 
 
         for k in xrange(nz):
-            self.heating_rate[k] = (hr_lw_out[k] + hr_sw_out[k]) * mlm.rho0 * cpd/86400.0
+            self.heating_rate[k] = (hr_lw_out[k] + hr_sw_out[k]) * mlm.rho[k] * cpd/86400.0
             self.net_lw_flux[k] = uflx_lw_out[k] - dflx_lw_out[k]
 
         # plt.figure(6)
