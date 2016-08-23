@@ -3,6 +3,7 @@ cimport numpy as np
 # import matplotlib.pyplot as plt
 include 'parameters.pxi'
 from libc.math cimport exp, cos
+from scipy.integrate import odeint
 
 # constants
 cdef double cp = 1004.0
@@ -30,6 +31,16 @@ cdef get_pressure(double [:] z, double p_surface, double rho0):
 
     return p_profile
 
+def rhs(p, z, param):
+    thetal_i = param[0]
+    qt_i = param[1]
+    T, ql = sat_adjst(p, thetal_i, qt_i)
+    return -g/(Rd*T*(1.0 - qt_i + eps_vi*(qt_i-ql)))
+
+def get_pressure_int(p0, z, param):
+    pressure = odeint(rhs, p0, z, args=(param,), hmax=1.0)[:, 0]
+    pressure = np.exp(pressure)
+    return pressure
 
 cdef double saturation_vapor_pressure(double temp_val) nogil:
     # Twarm = 273.0

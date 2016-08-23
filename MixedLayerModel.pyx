@@ -105,7 +105,7 @@ cdef class MixedLayerModel:
         # self.radiation_frequency = 10.0
         # self.next_radiation_calculate = 0.0
 
-    def initialize(self, NetCDFIO_Stats NS):
+    cpdef initialize(self, NetCDFIO_Stats NS):
 
         # Get reference density profile
         cdef:
@@ -117,12 +117,13 @@ cdef class MixedLayerModel:
             double [:] alpha = np.zeros((self.nz,), dtype=np.double)
 
         # Get pressure profile
-        def rhs(p, z):
-            T, ql = sat_adjst(self.p_surface, self.thetal_i, self.qt_surface)
-            return -g/(Rd*T*(1.0 - self.qt_surface + eps_vi*(self.qt_surface-ql)))
-
-        self.pressure = odeint(rhs, np.log(self.p_surface), self.z, hmax=1.0)[:, 0]
-        self.pressure = np.exp(self.pressure)
+        # def rhs(p, z):
+        #     T, ql = sat_adjst(self.p_surface, self.thetal_i, self.qt_surface)
+        #     return -g/(Rd*T*(1.0 - self.qt_surface + eps_vi*(self.qt_surface-ql)))
+        #
+        # self.pressure = odeint(rhs, np.log(self.p_surface), self.z, hmax=1.0)[:, 0]
+        # self.pressure = np.exp(self.pressure)
+        self.pressure = get_pressure_int(self.p_surface, self.z, [self.thetal_i, self.qt_surface])
 
         # Determine the cloud top level and above
         for k in xrange(self.nz):
