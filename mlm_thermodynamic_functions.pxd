@@ -14,4 +14,6 @@ cdef qv_star_rh(double p0, double rh, double pv)
 
 cdef qv_unsat(double p0, double pv)
 
+cdef double get_alpha(double p0, double T, double qt, double qv)
+
 cdef get_ls_subsidence(double [:] z, double zi_i, double div_frac)

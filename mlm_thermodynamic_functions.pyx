@@ -21,7 +21,7 @@ cdef double cp = 1004.0
 
 cdef get_pressure(double [:] z, double p_surface, double rho0):
     # thetav = theta * (1.0 + 0.61 * qv - ql)
-
+    cdef Py_ssize_t i
     cdef double [:] p_profile = np.zeros(z.shape[0])
     p_profile[0] = p_surface
     cdef double dz = z[1] - z[0]
@@ -30,17 +30,6 @@ cdef get_pressure(double [:] z, double p_surface, double rho0):
         p_profile[i] = p_profile[i - 1] - g * rho0 * dz
 
     return p_profile
-
-def rhs(p, z, param):
-    thetal_i = param[0]
-    qt_i = param[1]
-    T, ql = sat_adjst(p, thetal_i, qt_i)
-    return -g/(Rd*T*(1.0 - qt_i + eps_vi*(qt_i-ql)))
-
-def get_pressure_int(p0, z, param):
-    pressure = odeint(rhs, p0, z, args=(param,), hmax=1.0)[:, 0]
-    pressure = np.exp(pressure)
-    return pressure
 
 cdef double saturation_vapor_pressure(double temp_val) nogil:
     # Twarm = 273.0

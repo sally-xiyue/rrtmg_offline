@@ -33,12 +33,6 @@ cdef class MixedLayerModel:
         double efficiency
         double w_star
 
-    # cdef:
-    #     # Radiation.Radiation radiation
-    #     int count
-    #     double radiation_frequency
-    #     double next_radiation_calculate
-
-    cpdef initialize(self, NetCDFIO_Stats NS)
+    # cpdef initialize(self, NetCDFIO_Stats NS)
     cpdef update(self, timestepping.TimeStepping TS, Radiation.Radiation Ra)
     cpdef stats_io(self, NetCDFIO_Stats NS)
