@@ -35,6 +35,9 @@ def Isdac():
     namelist['initial']['divergence'] = 5.0e-6 # LS divergence
     namelist['initial']['div_frac'] = 1.0 # fractional divergence rate
 
+    namelist['grid'] = {}
+    namelist['grid']['dz'] = 1.0
+
     namelist['entrainment'] = {}
     namelist['entrainment']['efficiency'] = 0.7
 

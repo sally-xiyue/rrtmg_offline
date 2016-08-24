@@ -64,8 +64,12 @@ cdef class MixedLayerModel:
         except:
             self.w_star = 0.7
 
+        try:
+            self.dz = namelist['grid']['dz']
+        except:
+            self.dz = 1.0
 
-        self.dz = 5.0  # z grid size
+        # self.dz = 5.0  # z grid size
         self.z = np.arange(self.dz, 1501., self.dz)
         self.nz = len(self.z)
 
@@ -77,12 +81,12 @@ cdef class MixedLayerModel:
 
         self.z_interface = np.zeros(self.nz+1)
         for i in xrange(self.nz):
-            self.z_interface[i+1] = self.z[i] + 2.5
+            self.z_interface[i+1] = self.z[i] + self.dz/2
         self.z_interface[0] = self.dz/2
 
         # self.pressure = get_pressure(self.z, self.p_surface, self.rho0)
         self.pressure = np.zeros_like(self.z)
-        self.pressure_i = get_pressure(self.z_interface, self.p_surface, self.rho0)
+        self.pressure_i = np.zeros_like(self.z_interface)
 
 
         self.temperature = np.zeros_like(self.pressure)
@@ -124,6 +128,9 @@ cdef class MixedLayerModel:
         p0 = np.log(self.p_surface)
         self.pressure = odeint(rhs, p0, np.array(self.z), hmax=1.0)[:, 0]
         self.pressure = np.exp(self.pressure)
+
+        self.pressure_i = odeint(rhs, p0, np.array(self.z_interface), hmax=1.0)[:, 0]
+        self.pressure_i = np.exp(self.pressure_i)
 
         # Determine the cloud top level and above
         for k in xrange(self.nz):
