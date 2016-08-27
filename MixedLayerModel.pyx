@@ -184,6 +184,7 @@ cdef class MixedLayerModel:
             double [:] tmp2 = np.zeros((self.nz,), dtype=np.double)
             # double qt_ft
             double temp
+            double wstar_tmp
 
         # Determine the cloud top level and above
         for k in xrange(self.nz):
@@ -214,8 +215,9 @@ cdef class MixedLayerModel:
         temp = self.thetal_ft * (self.pressure[idx]/p_tilde) ** (Rd/cpd)
         # qt_ft = qv_unsat(self.pressure[idx], saturation_vapor_pressure(temp) * self.rh_ft)
 
+        wstar_tmp = (0.00044*zi)**(1/3.)
         # w_e = entrainment_rate(self.efficiency, dfrad, dthetal, thetal, self.rho0)
-        w_e = entrainment_moeng(self.temperature[0], zi, dthetal, self.w_star, dfrad, self.rho[idx])
+        w_e = entrainment_moeng(self.temperature[0], zi, dthetal, wstar_tmp, dfrad, self.rho[idx])
 
         w_ls = get_ls_subsidence(self.z, self.zi_i, self.div_frac)[idx]
 
