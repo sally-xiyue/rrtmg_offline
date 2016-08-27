@@ -43,6 +43,8 @@ def Isdac():
 
     namelist['radiation'] = {}
     namelist['radiation']['frequency'] = 60.0
+    namelist['radiation']['n_buffer'] = 15 # adjust according to dz
+    namelist['radiation']['stretch_factor'] = 1.5 # adjust according to dz
 
     namelist['time_stepping'] = {}
     namelist['time_stepping']['t'] = 0.0

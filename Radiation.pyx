@@ -125,8 +125,16 @@ cdef class Radiation:
 
         self.profile_name = 'arctic'
 
-        self.n_buffer = 15
-        self.stretch_factor = 1.5
+        try:
+            self.n_buffer = namelist['radiation']['n_buffer']
+        except:
+            self.n_buffer = 15
+
+        try:
+            self.stretch_factor = namelist['radiation']['stretch_factor']
+        except:
+            self.stretch_factor = 1.5
+
         self.patch_pressure = 650.00*100.0
 
         # Namelist options related to gas concentrations
