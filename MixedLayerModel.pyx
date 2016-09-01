@@ -204,11 +204,12 @@ cdef class MixedLayerModel:
                                              (self.z[k] - zi) * self.gamma_thetal
                 self.temperature[k] = self.thetal[k] * (self.pressure[k] / p_tilde) ** (Rd / cpd)
                 self.qt[k] = qv_unsat(self.pressure[k], saturation_vapor_pressure(self.temperature[k]) * self.rh_ft)
+                self.ql[k] = 0.0
 
             self.qv[k] = self.qt[k] - self.ql[k]
 
         # get radiative flux jump at the cloud top
-        dfrad = Ra.net_lw_flux[idx_top] - Ra.net_lw_flux[idx]
+        dfrad = (Ra.net_lw_flux[idx_top] - np.min(Ra.net_lw_flux))*0.5
         dthetal = self.thetal[idx_top] - self.thetal[idx]
         dqt = self.qt[idx_top] - self.qt[idx]
 
