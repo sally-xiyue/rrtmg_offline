@@ -56,7 +56,7 @@ def Isdac():
     namelist['stats_io']['frequency'] = 60.0
 
     namelist['meta'] = {}
-    namelist['meta']['simname'] = 'IsdacMLM'
+    namelist['meta']['simname'] = 'IsdacMLM_test'
     namelist['meta']['casename'] = 'IsdacMLM'
 
     return namelist

@@ -4,9 +4,9 @@ import generate_namelist
 
 def main():
     # schemes = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-    dTis = [3]
+    dTis = [5]
     dSSTs = [0]
-    rhs = [80, 90]
+    rhs = [60]
 
     for dTi in dTis:
         for dSST in dSSTs:

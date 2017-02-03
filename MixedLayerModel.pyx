@@ -60,11 +60,6 @@ cdef class MixedLayerModel:
             self.efficiency = 0.7
 
         try:
-            self.w_star = namelist['entrainment']['w_star']
-        except:
-            self.w_star = 0.7
-
-        try:
             self.dz = namelist['grid']['dz']
         except:
             self.dz = 1.0
@@ -184,7 +179,7 @@ cdef class MixedLayerModel:
             double [:] tmp2 = np.zeros((self.nz,), dtype=np.double)
             # double qt_ft
             double temp
-            double wstar_tmp
+            double B_mean
 
         # Determine the cloud top level and above
         for k in xrange(self.nz):
@@ -216,9 +211,8 @@ cdef class MixedLayerModel:
         temp = self.thetal_ft * (self.pressure[idx]/p_tilde) ** (Rd/cpd)
         # qt_ft = qv_unsat(self.pressure[idx], saturation_vapor_pressure(temp) * self.rh_ft)
 
-        wstar_tmp = (0.00044*zi)**(1/3.)
-        # w_e = entrainment_rate(self.efficiency, dfrad, dthetal, thetal, self.rho0)
-        w_e = entrainment_moeng(self.temperature[0], zi, dthetal, wstar_tmp, dfrad, self.rho[idx])
+        B_mean = 4.0e-3 #BL-mean buoyancy flux
+        w_e = entrainment_moeng(B_mean, dthetal, dfrad, self.rho[idx])
 
         w_ls = get_ls_subsidence(self.z, self.zi_i, self.div_frac)[idx]
 
@@ -275,6 +269,6 @@ cdef double entrainment_rate(double efficiency, double dfrad, double dthetal, do
     w_e = efficiency * dfrad / cpd / rho / dthetal
     return w_e
 
-cdef double entrainment_moeng(double T0, double zi, double dthetal, double w_star, double dfrad, double rho):
-    cdef double A = 0.56
-    return A*w_star**3*T0/(g*zi*dthetal)+dfrad/rho/cpd/dthetal
+cdef double entrainment_moeng(double B, double dthetal, double dfrad, double rho):
+    cdef double a2 = 3.0
+    return a2*B/dthetal + dfrad/rho/cpd/dthetal
