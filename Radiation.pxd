@@ -1,5 +1,5 @@
 cimport MixedLayerModel
-cimport timestepping
+cimport TimeStepping
 from NetCDFIO cimport NetCDFIO_Stats
 
 # cdef class Radiation_:
@@ -8,7 +8,7 @@ from NetCDFIO cimport NetCDFIO_Stats
 #         # public double [:] net_lw_flux
 #     cpdef initialize(self)
 #     cpdef initialize_profiles(self, MixedLayerModel.MixedLayerModel mlm)
-#     cpdef update(self, MixedLayerModel.MixedLayerModel mlm, timestepping.TimeStepping TS)
+#     cpdef update(self, MixedLayerModel.MixedLayerModel mlm, TimeStepping.TimeStepping TS)
 #
 
 cdef class RadiationIsdac:
@@ -16,7 +16,7 @@ cdef class RadiationIsdac:
         public double [:] net_lw_flux
     cpdef initialize(self)
     cpdef initialize_profiles(self, MixedLayerModel.MixedLayerModel mlm)
-    cpdef update(self, MixedLayerModel.MixedLayerModel mlm, timestepping.TimeStepping TS)
+    cpdef update(self, MixedLayerModel.MixedLayerModel mlm, TimeStepping.TimeStepping TS)
 
 
 cdef class Radiation:
@@ -62,6 +62,6 @@ cdef class Radiation:
 
     cpdef initialize(self, MixedLayerModel.MixedLayerModel mlm, NetCDFIO_Stats NS)
     cpdef initialize_profiles(self, MixedLayerModel.MixedLayerModel mlm)
-    cpdef update(self, MixedLayerModel.MixedLayerModel mlm, timestepping.TimeStepping TS)
+    cpdef update(self, MixedLayerModel.MixedLayerModel mlm, TimeStepping.TimeStepping TS)
     cdef update_RRTM(self, MixedLayerModel.MixedLayerModel mlm)
     cpdef stats_io(self, NetCDFIO_Stats NS)

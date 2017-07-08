@@ -14,7 +14,7 @@ from mlm_thermodynamic_functions cimport *
 cimport Radiation
 # import Radiation
 include 'parameters.pxi'
-cimport timestepping
+cimport TimeStepping
 from NetCDFIO cimport NetCDFIO_Stats
 from libc.math cimport fmin, fabs
 from scipy.integrate import odeint
@@ -24,65 +24,74 @@ from scipy.integrate import odeint
 cdef class MixedLayerModel:
     def __init__(self, namelist):
 
+        #Get initial conditions from namelist or using ISDAC_i default numbers
+        #Free tropospheric lapse rate
         try:
-            self.gamma_thetal = namelist['initial']['gamma']  # free tropospheric lapse rate
+            self.gamma_thetal = namelist['initial']['gamma']
         except:
             self.gamma_thetal = 5.0 / 1000.
 
+        #BL potential temperature
         try:
             self.thetal_i = namelist['initial']['SST'] + namelist['initial']['dSST']
         except:
             self.thetal_i = 265.0  # default value
 
+        #Inversion strength at cloud top
         try:
             self.thetal_ft = self.thetal_i + namelist['initial']['dTi']
         except:
             self.thetal_ft = self.thetal_i + 5.0
 
+        #Relative humidity in the free troposphere (constant)
         try:
             self.rh_ft = namelist['initial']['rh']
         except:
             self.rh_ft = 0.6  # default value
 
+        #Relative humidity near the surface
         try:
-            self.rh_i = namelist['initial']['rh0']  # near surface relative humidity
+            self.rh_i = namelist['initial']['rh0']
         except:
             self.rh_i = 0.8  # default
 
+        #Fractional coefficient of large-scale divergence
         try:
             self.div_frac = namelist['initial']['div_frac']
         except:
             self.div_frac = 1.0
 
+        #Entrainment efficiency (not needed in Moeng parameterization)
         try:
             self.efficiency = namelist['entrainment']['efficiency']
         except:
             self.efficiency = 0.7
 
+        #Vertical grid resolution (matters for radiation and cloud top inversion)
         try:
             self.dz = namelist['grid']['dz']
         except:
             self.dz = 1.0
 
-        # self.dz = 5.0  # z grid size
+        #Set up vertical grid
         self.z = np.arange(self.dz, 1501., self.dz)
         self.nz = len(self.z)
-
-        self.p_surface = 102000.0  # surface pressure
-        self.zi_i = 820.0  # initial BL height
-        self.t_surface = self.thetal_i  # t_surface = thetal_i * (p_surface/p_tilde)**(Rd/cp)
-        self.rho0 = self.p_surface / Rd / self.t_surface
-        self.qt_surface = qv_unsat(self.p_surface, saturation_vapor_pressure(self.t_surface) * self.rh_i)
-
-        self.z_interface = np.zeros(self.nz+1)
+        self.z_interface = np.zeros(self.nz+1) #For radiation purpose
         for i in xrange(self.nz):
             self.z_interface[i+1] = self.z[i] + self.dz/2
         self.z_interface[0] = self.dz/2
 
-        # self.pressure = get_pressure(self.z, self.p_surface, self.rho0)
+        #Additional initial condition parameters that are not in the namelist
+        self.p_surface = 102000.0  # surface pressure
+        self.zi_i = 820.0  # initial BL height
+
+        self.t_surface = self.thetal_i  # t_surface = thetal_i * (p_surface/p_tilde)**(Rd/cp)
+        self.rho0 = self.p_surface / Rd / self.t_surface
+        self.qt_surface = qv_unsat(self.p_surface, saturation_vapor_pressure(self.t_surface) * self.rh_i)
+
+        #Initialize profiles
         self.pressure = np.zeros_like(self.z)
         self.pressure_i = np.zeros_like(self.z_interface)
-
 
         self.temperature = np.zeros_like(self.pressure)
         self.qv = np.zeros_like(self.pressure)
@@ -164,7 +173,7 @@ cdef class MixedLayerModel:
         return
 
 
-    cpdef update(self, timestepping.TimeStepping TS, Radiation.Radiation Ra):
+    cpdef update(self, TimeStepping.TimeStepping TS, Radiation.Radiation Ra):
         cdef:
             double zi = self.values[0]
             double thetal = self.values[1]

@@ -1,5 +1,5 @@
 cimport MixedLayerModel
-cimport timestepping
+cimport TimeStepping
 cimport NetCDFIO
 cimport Radiation
 import time
@@ -13,7 +13,7 @@ class Simulation:
 
     def initialize(self, namelist):
         self.mlm = MixedLayerModel.MixedLayerModel(namelist)
-        self.TS = timestepping.TimeStepping()
+        self.TS = TimeStepping.TimeStepping()
         self.StatsIO = NetCDFIO.NetCDFIO_Stats()
         self.Ra = Radiation.Radiation(namelist)
 

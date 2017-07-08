@@ -1,5 +1,5 @@
 cimport Radiation
-cimport timestepping
+cimport TimeStepping
 from NetCDFIO cimport NetCDFIO_Stats
 
 cdef class MixedLayerModel:
@@ -33,5 +33,5 @@ cdef class MixedLayerModel:
         double efficiency
 
     # cpdef initialize(self, NetCDFIO_Stats NS)
-    cpdef update(self, timestepping.TimeStepping TS, Radiation.Radiation Ra)
+    cpdef update(self, TimeStepping.TimeStepping TS, Radiation.Radiation Ra)
     cpdef stats_io(self, NetCDFIO_Stats NS)

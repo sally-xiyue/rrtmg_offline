@@ -57,7 +57,7 @@ _ext = Extension('Radiation', ['Radiation.pyx'], include_dirs=include_path,
                  runtime_library_dirs=library_dirs, extra_objects=extra_objects)
 extensions.append(_ext)
 
-_ext = Extension('timestepping', ['timestepping.pyx'], include_dirs=include_path,
+_ext = Extension('TimeStepping', ['TimeStepping.pyx'], include_dirs=include_path,
                  extra_compile_args=extra_compile_args, libraries=libraries, library_dirs=library_dirs,
                  runtime_library_dirs=library_dirs, extra_objects=extra_objects)
 extensions.append(_ext)
@@ -71,6 +71,20 @@ _ext = Extension('NetCDFIO', ['NetCDFIO.pyx'], include_dirs=include_path,
                  extra_compile_args=extra_compile_args, libraries=libraries, library_dirs=library_dirs,
                  runtime_library_dirs=library_dirs)
 extensions.append(_ext)
+
+#Build RRTMG
+
+rrtmg_compiled = os.path.exists('./RRTMG/rrtmg_build/rrtmg_combined.o')
+if not rrtmg_compiled:
+    run_str = 'cd ./RRTMG; '
+    run_str += ('FC='+ f_compiler + ' LIB_NETCDF=' + netcdf_lib + ' INC_NETCDF='+
+               netcdf_include + ' csh ./compile_RRTMG_combined.csh')
+    print run_str
+    sp.call([run_str], shell=True)
+else:
+    print("RRTMG Seems to be already compiled.")
+
+
 
 setup(
     ext_modules=cythonize(extensions, verbose=1, include_path=include_path)

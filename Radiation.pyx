@@ -16,7 +16,7 @@ include 'parameters.pxi'
 from profiles import profile_data
 
 cimport MixedLayerModel
-cimport timestepping
+cimport TimeStepping
 from NetCDFIO cimport NetCDFIO_Stats
 #
 # cdef class Radiation_:
@@ -43,7 +43,7 @@ from NetCDFIO cimport NetCDFIO_Stats
 #         self.scheme.initialize_profiles(mlm)
 #         return
 #
-#     cpdef update(self, MixedLayerModel.MixedLayerModel mlm, timestepping.TimeStepping TS):
+#     cpdef update(self, MixedLayerModel.MixedLayerModel mlm, TimeStepping.TimeStepping TS):
 #         self.scheme.update(mlm, TS)
 #         return
 
@@ -85,7 +85,7 @@ cdef class RadiationIsdac:
         # print('net_lw_flux initialized')
         return
 
-    cpdef update(self, MixedLayerModel.MixedLayerModel mlm, timestepping.TimeStepping TS):
+    cpdef update(self, MixedLayerModel.MixedLayerModel mlm, TimeStepping.TimeStepping TS):
         cdef:
             double kap = 170.0
             double f0 = 72.0
@@ -389,7 +389,7 @@ cdef class Radiation:
 
         return
 
-    cpdef update(self, MixedLayerModel.MixedLayerModel mlm, timestepping.TimeStepping TS):
+    cpdef update(self, MixedLayerModel.MixedLayerModel mlm, TimeStepping.TimeStepping TS):
         if TS.rk_step == 0:
             if self.radiation_frequency <= 0.0:
                 self.update_RRTM(mlm)
