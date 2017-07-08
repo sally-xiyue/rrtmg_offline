@@ -7,6 +7,7 @@ import sys
 import platform
 import subprocess as sp
 import os.path
+import string
 
 # Now get include paths from relevant python modules
 include_path = [mpi4py.get_include()]
@@ -23,6 +24,7 @@ if sys.platform == 'darwin':
     netcdf_include = '/opt/local/include'
     netcdf_lib = '/opt/local/lib'
     f_compiler = 'gfortran'
+    # f_compiler = 'gfortran-mp-5'
 elif 'euler' in platform.node():
     #Compile flags for euler @ ETHZ
     library_dirs = ['/cluster/apps/openmpi/1.6.5/x86_64/gcc_4.8.2/lib/']
@@ -36,6 +38,20 @@ elif 'euler' in platform.node():
     extra_objects=['./RRTMG/rrtmg_build/rrtmg_combined.o']
     netcdf_include = '/cluster/apps/netcdf/4.3.1/x86_64/gcc_4.8.2/openmpi_1.6.5/include'
     netcdf_lib = '/cluster/apps/netcdf/4.3.1/x86_64/gcc_4.8.2/openmpi_1.6.5/lib'
+    f_compiler = 'gfortran'
+elif platform.machine()  == 'x86_64':
+    #Compile flags for fram @ Caltech
+    library_dirs = string.split(os.environ['LD_LIBRARY_PATH'],':')
+    libraries = []
+    libraries.append('mpi')
+    libraries.append('gfortran')
+    extensions = []
+    extra_compile_args=[]
+    extra_compile_args+=['-std=c99', '-O3', '-march=native', '-Wno-unused',
+                         '-Wno-#warnings', '-Wno-maybe-uninitialized', '-Wno-cpp', '-Wno-array-bounds','-fPIC']
+    extra_objects=['./RRTMG/rrtmg_build/rrtmg_combined.o']
+    netcdf_include = '/share/apps/software/rhel6/software/netCDF/4.4.0-foss-2016a/include'
+    netcdf_lib = '/share/apps/software/rhel6/software/netCDF/4.4.0-foss-2016a/lib'
     f_compiler = 'gfortran'
 
 else:
