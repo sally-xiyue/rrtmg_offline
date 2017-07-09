@@ -28,9 +28,12 @@ cdef class NetCDFIO_Stats:
         # self.uuid = str(namelist['meta']['uuid'])
         self.frequency = namelist['stats_io']['frequency']
 
-        # outpath = '/cluster/scratch/xiyzhang/outputs/mlm/'
-        self.stats_path = '/cluster/scratch/xiyzhang/output/mlm/'
-        # self.path_plus_file = str(self.stats_path + 'Stats.mlm_test.nc')
+        self.stats_path = namelist['stats_io']['output_root']
+        try:
+            os.mkdir(self.stats_path)
+        except:
+            pass
+
         self.path_plus_file = str(self.stats_path + 'Stats.' + namelist['meta']['simname'] + '.nc')
 
         self.setup_stats_file(mlm)

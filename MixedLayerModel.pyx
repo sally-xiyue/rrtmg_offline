@@ -108,10 +108,6 @@ cdef class MixedLayerModel:
         self.values[1] = self.thetal_i
         self.values[2] = self.qt_surface
 
-        # self.radiation = Radiation.RadiationRRTM(namelist)
-        # self.count = 0
-        # self.radiation_frequency = 10.0
-        # self.next_radiation_calculate = 0.0
 
     def initialize(self, NetCDFIO_Stats NS):
 

@@ -54,6 +54,7 @@ def Isdac():
 
     namelist['stats_io'] = {}
     namelist['stats_io']['frequency'] = 60.0
+    namelist['stats_io']['output_root'] = './output/'
 
     namelist['meta'] = {}
     namelist['meta']['simname'] = 'IsdacMLM_test'
