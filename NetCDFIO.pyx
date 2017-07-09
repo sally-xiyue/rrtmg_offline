@@ -28,7 +28,7 @@ cdef class NetCDFIO_Stats:
         # self.uuid = str(namelist['meta']['uuid'])
         self.frequency = namelist['stats_io']['frequency']
 
-        self.stats_path = namelist['stats_io']['output_root']
+        self.stats_path = str(namelist['stats_io']['output_root'])
         try:
             os.mkdir(self.stats_path)
         except:
