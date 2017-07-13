@@ -216,7 +216,7 @@ cdef class MixedLayerModel:
         temp = self.thetal_ft * (self.pressure[idx]/p_tilde) ** (Rd/cpd)
         # qt_ft = qv_unsat(self.pressure[idx], saturation_vapor_pressure(temp) * self.rh_ft)
 
-        B_mean = 5.93e-3 #BL-mean buoyancy flux
+        B_mean = 6.34e-3 #BL-mean buoyancy flux
         w_e = entrainment_moeng(B_mean, dthetal, dfrad, self.rho[idx])
 
         w_ls = get_ls_subsidence(self.z, self.zi_i, self.div_frac)[idx]
@@ -275,5 +275,5 @@ cdef double entrainment_rate(double efficiency, double dfrad, double dthetal, do
     return w_e
 
 cdef double entrainment_moeng(double B, double dthetal, double dfrad, double rho):
-    cdef double a2 = 2.45
+    cdef double a2 = 1.99
     return a2*B/dthetal + dfrad/rho/cpd/dthetal
