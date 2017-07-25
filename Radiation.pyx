@@ -167,6 +167,7 @@ cdef class Radiation:
         self.net_lw_flux = np.zeros((mlm.nz,), dtype=np.double)
 
         NS.add_profile('net_lw_flux')
+        NS.add_profile('radiative_heating_rate')
 
         return
 
@@ -599,5 +600,6 @@ cdef class Radiation:
     cpdef stats_io(self, NetCDFIO_Stats NS):
 
         NS.write_profile('net_lw_flux', self.net_lw_flux)
+        NS.write_profile('radiative_heating_rate', self.heating_rate)
 
         return
