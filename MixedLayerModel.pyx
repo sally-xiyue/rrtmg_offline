@@ -162,6 +162,7 @@ cdef class MixedLayerModel:
         NS.add_profile('qt')
         NS.add_profile('ql')
         NS.add_profile('temperature')
+        NS.add_profile('rho')
 
         NS.add_ts('cloud_base')
         NS.add_ts('lwp')
@@ -185,6 +186,7 @@ cdef class MixedLayerModel:
             # double qt_ft
             double temp
             double B_mean
+            double alpha
 
         # Determine the cloud top level and above
         for k in xrange(self.nz):
@@ -207,6 +209,8 @@ cdef class MixedLayerModel:
                 self.ql[k] = 0.0
 
             self.qv[k] = self.qt[k] - self.ql[k]
+            alpha = get_alpha(self.pressure[k], self.temperature[k], self.qt[k], self.qv[k])
+            self.rho[k] = 1.0/alpha
 
         # get radiative flux jump at the cloud top
         dfrad = (Ra.net_lw_flux[idx_top] - np.min(Ra.net_lw_flux))*0.5
@@ -240,6 +244,7 @@ cdef class MixedLayerModel:
         NS.write_profile('qt', self.qt)
         NS.write_profile('ql', self.ql)
         NS.write_profile('temperature', self.temperature)
+        NS.write_profile('rho', self.rho)
 
         cdef:
             Py_ssize_t kmin = 0
