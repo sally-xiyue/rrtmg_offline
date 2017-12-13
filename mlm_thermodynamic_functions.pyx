@@ -2,7 +2,7 @@ import numpy as np
 cimport numpy as np
 # import matplotlib.pyplot as plt
 include 'parameters.pxi'
-from libc.math cimport exp, cos
+from libc.math cimport exp, cos, pow
 from scipy.integrate import odeint
 
 # constants
@@ -12,7 +12,7 @@ cdef double cp = 1004.0
 # Rv = 461.5
 # eps_v = Rd / Rv
 # eps_vi = 1 / eps_v
-# p_tilde = 1.0e5
+# cdef double p_tilde = 1.0e5
 #
 # f1 = 15.0
 # f0 = 72.0
@@ -90,36 +90,51 @@ cdef sat_adjst(double p_, double thetal_, double qt_):
     cdef double qs_1 = qv_star(p_, qt_, pv_star_1)
 
     cdef:
-        double ql_1
-        double f_1
+        double sigma_1, sigma_2
+        double f_1, f_2
         double t_2
         double pv_star_2
         double qs_2
-        double ql_2
+        double ql_2, qi_2
         double t_n
+        double lambda_1, lambda_2
+        double L_1, L_2
+        double qi_1 = 0.0
+        double ql_1 = 0.0
 
     if qt_ <= qs_1:
         # If not saturated return temperature and ql = 0.0
-        return t_1, 0.0
+        return t_1, 0.0, 0.0
     else:
-        ql_1 = qt_ - qs_1
-        f_1 = thetal_ - thetal_isdac(p_, t_1, ql_1, qt_)
-        t_2 = t_1 + 2.501e6 * ql_1 / cp
-        pv_star_2 = saturation_vapor_pressure(t_2)
-        qs_2 = qv_star(p_, qt_, pv_star_2)
-        ql_2 = qt_ - qs_2
+        sigma_1 = qt_ - qs_1
+        lambda_1 = lambda_Arctic(t_1)
+        L_1 = latent_heat_Arctic(t_1, lambda_1)
+        # f_1 = thetal_ - thetal_isdac(p_, t_1, ql_1, qt_)
+        f_1 = thetal_ - thetali(p_, t_1, qt_, ql_1, qi_1, L_1)
+        # t_2 = t_1 + 2.501e6 * ql_1 / cp
+        t_2 = t_1 + sigma_1 * L_1 /((1.0 - qt_)*cpd + qs_1 * cpv)
+        # pv_star_2 = saturation_vapor_pressure(t_2)
+        # qs_2 = qv_star(p_, qt_, pv_star_2)
+        # sigma_2 = qt_ - qs_2
+        # lambda_2 = lambda_Arctic(t_2)
 
         while np.fabs(t_2 - t_1) >= 1e-9:
             pv_star_2 = saturation_vapor_pressure(t_2)
             qs_2 = qv_star(p_, qt_, pv_star_2)
-            ql_2 = qt_ - qs_2
-            f_2 = thetal_ - thetal_isdac(p_, t_2, ql_2, qt_)
+            # ql_2 = qt_ - qs_2
+            sigma_2 = qt_ - qs_2
+            lambda_2 = lambda_Arctic(t_2)
+            L_2 = latent_heat_Arctic(t_2, lambda_2)
+            ql_2 = sigma_2 * lambda_2
+            qi_2 = sigma_2 * (1.0 - lambda_2)
+            # f_2 = thetal_ - thetal_isdac(p_, t_2, ql_2, qt_)
+            f_2 = thetal_ - thetali(p_, t_2, qt_, ql_2, qi_2, L_2)
             t_n = t_2 - f_2 * (t_2 - t_1) / (f_2 - f_1)
             t_1 = t_2
             t_2 = t_n
             f_1 = f_2
 
-    return t_2, ql_2
+    return t_2, ql_2, qi_2
 
 
 cdef qv_star_rh(double p0, double rh, double pv):
@@ -169,3 +184,32 @@ cdef get_ls_subsidence(double [:] z, double zi_i, double div_frac):
             w_ls[k] = -divergence * zi_i * cos(pi * 0.5 * (z[k] - zi_i) / (10000. - zi_i))
 
     return w_ls
+
+cdef inline double lambda_Arctic(double T) nogil:
+    cdef:
+        double Twarm = 273.0
+        double Tcold = 235.0
+        double pow_n = 0.1
+        double Lambda = 0.0
+
+    if T >= Tcold and T <= Twarm:
+        Lambda = pow((T - Tcold)/(Twarm - Tcold), pow_n)
+    elif T > Twarm:
+        Lambda = 1.0
+    else:
+        Lambda = 0.0
+
+    return Lambda
+
+cdef inline double latent_heat_Arctic(double T, double Lambda) nogil:
+    cdef:
+        double Lv = 2.501e6
+        double Ls = 2.8334e6
+
+    return (Lv * Lambda) + (Ls * (1.0 - Lambda))
+
+cdef inline double thetali(double p0, double T, double qt, double ql, double qi, double L):
+    # Liquid ice potential temperature consistent with Tripoli and Cotton (1981)
+    cdef:
+        double theta = T / pow((p0/p_tilde),kappa)
+    return theta * exp(-L*(ql/(1.0 - qt) + qi/(1.0 - qt))/(T*cpd))

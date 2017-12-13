@@ -18,12 +18,12 @@ cdef class TimeStepping:
         try:
             self.dt = namelist['time_stepping']['dt_initial']
         except:
-            self.dt = 10.0
+            self.dt = 600.0
 
         try:
             self.dt_max = namelist['time_stepping']['dt_max']
         except:
-            self.dt_max = 10.0
+            self.dt_max = 600.0
 
         try:
             self.t = namelist['time_stepping']['t']

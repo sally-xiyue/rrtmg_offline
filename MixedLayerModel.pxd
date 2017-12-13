@@ -31,6 +31,8 @@ cdef class MixedLayerModel:
         double [:] values
         double [:] tendencies
         double efficiency
+        double dz_inv
+        double thetal_inv
 
     # cpdef initialize(self, NetCDFIO_Stats NS)
     cpdef update(self, TimeStepping.TimeStepping TS, Radiation.Radiation Ra)

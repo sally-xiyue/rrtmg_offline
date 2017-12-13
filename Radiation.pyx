@@ -18,6 +18,8 @@ from profiles import profile_data
 cimport MixedLayerModel
 cimport TimeStepping
 from NetCDFIO cimport NetCDFIO_Stats
+from mlm_thermodynamic_functions import *
+from mlm_thermodynamic_functions cimport *
 #
 # cdef class Radiation_:
 #     def __init__(self, namelist):
@@ -157,6 +159,12 @@ cdef class Radiation:
 
         self.next_radiation_calculate = 0.0
 
+        try:
+            self.IsdacCC_dT = namelist['initial']['dSST'] + namelist['initial']['dTi'] - 5.0
+            print('IsdacCC case: RRTM profiles are shifted according to %2.2f temperature change.'%(self.IsdacCC_dT))
+        except:
+            self.IsdacCC_dT = 0.0
+
         # self.bl = MixedLayerModel.boundary_layer_profiles(namelist)
 
         return
@@ -188,7 +196,8 @@ cdef class Radiation:
         # Construct the extension of the profiles, including a blending region between the given profile and LES domain (if desired)
         pressures = profile_data[self.profile_name]['pressure'][:]
         temperatures = profile_data[self.profile_name]['temperature'][:]
-        vapor_mixing_ratios = profile_data[self.profile_name]['vapor_mixing_ratio'][:]
+        # vapor_mixing_ratios = profile_data[self.profile_name]['vapor_mixing_ratio'][:]
+        specific_humidity = profile_data[self.profile_name]['specific_humidity'][:]
 
         n_profile = len(pressures[pressures<=self.patch_pressure]) # nprofile = # of points in the fixed profile to use
         self.n_ext =  n_profile + self.n_buffer # n_ext = total # of points to add to LES domain (buffer portion + fixed profile portion)
@@ -205,8 +214,9 @@ cdef class Radiation:
         cdef Py_ssize_t count = 0
         for k in xrange(len(pressures)-n_profile, len(pressures)):
             self.p_ext[self.n_buffer+count] = pressures[k]
-            self.t_ext[self.n_buffer+count] = temperatures[k]
-            self.rv_ext[self.n_buffer+count] = vapor_mixing_ratios[k]
+            qt_new = get_humidity(temperatures[k], specific_humidity[k], pressures[k], temperatures[k]+self.IsdacCC_dT)
+            self.t_ext[self.n_buffer+count] = temperatures[k] + self.IsdacCC_dT
+            self.rv_ext[self.n_buffer+count] = qt_new / (1.0 - qt_new)
             count += 1
 
 
@@ -408,6 +418,7 @@ cdef class Radiation:
 
         cdef:
             double [:] rl_full = np.zeros((nz_full,), dtype=np.double, order='F')
+            double [:] ri_full = np.zeros((nz_full,), dtype=np.double, order='F')
             double [:] play_in = np.zeros((nz_full,), dtype=np.double, order='F')
             double [:] plev_in = np.zeros((nz_full + 1), dtype=np.double, order='F')
             double [:] tlay_in = np.zeros((nz_full,), dtype=np.double, order='F')
@@ -472,6 +483,8 @@ cdef class Radiation:
             tlay_in[k] = mlm.temperature[k]
             h2ovmr_in[k] = mlm.qv[k]/ (1.0 - mlm.qv[k])* Rv/Rd * self.h2o_factor
             rl_full[k] = (mlm.ql[k])/ (1.0 - mlm.qv[k])
+            ri_full[k] = (mlm.qi[k])/ (1.0 - mlm.qv[k])
+            # ri_full[k] = 0.0
             cliqwp_in[k] = ((mlm.ql[k])/ (1.0 - mlm.qv[k])
                                *1.0e3*(self.pi_full[k] - self.pi_full[k+1])/g)
             cicewp_in[k] = ((mlm.qi[k])/ (1.0 - mlm.qv[k])
@@ -500,6 +513,13 @@ cdef class Radiation:
                     reliq_in[k] = ((3.0*self.p_full[k]/Rd/tlay_in[k]*rl_full[k]/
                                         fmax(cldfr_in[k],1.0e-6))/(4.0*pi*1.0e3*100.0))**(1.0/3.0)
                     reliq_in[k] = fmin(fmax(reliq_in[ k]*rv_to_reff, 2.5), 60.0)
+
+                # Boudala et al. (2002) Eqn 10a
+                reice_in[k] = 53.005 * ((self.p_full[k]/Rd/tlay_in[k]*ri_full[k]*1.0e3)/
+                                            fmax(cldfr_in[k],1.0e-6)) ** 0.06 \
+                                      * exp(0.013*(tlay_in[k] - 273.16))
+                reice_in[k] = fmin(fmax(reice_in[k]/1.54, 5.0), 140.0) # Threshold from rrtmg sw instruction
+
 
             with gil:
                 tlev_in[0] = mlm.t_surface
@@ -603,3 +623,12 @@ cdef class Radiation:
         NS.write_profile('radiative_heating_rate', self.heating_rate)
 
         return
+
+def get_humidity(temperature_old, qt_old, pressure, temperature_new):
+    pv_star_1 = saturation_vapor_pressure(temperature_old)
+    pv_1 = (pressure * qt_old) / (eps_v * (1.0 - qt_old) + qt_old)
+    rh_ = pv_1 / pv_star_1
+    pv_star_2 = saturation_vapor_pressure(temperature_new)
+    pv_2 = rh_ * pv_star_2
+    qt_new = 1.0/(eps_vi * (pressure - pv_2)/pv_2 + 1.0)
+    return qt_new

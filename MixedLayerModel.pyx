@@ -39,7 +39,8 @@ cdef class MixedLayerModel:
 
         #Inversion strength at cloud top
         try:
-            self.thetal_ft = self.thetal_i + namelist['initial']['dTi']
+            self.thetal_inv = namelist['initial']['dTi']
+            self.thetal_ft = self.thetal_i + self.thetal_inv
         except:
             self.thetal_ft = self.thetal_i + 5.0
 
@@ -74,7 +75,7 @@ cdef class MixedLayerModel:
             self.dz = 1.0
 
         #Set up vertical grid
-        self.z = np.arange(self.dz, 1501., self.dz)
+        self.z = np.arange(self.dz, 2501., self.dz)
         self.nz = len(self.z)
         self.z_interface = np.zeros(self.nz+1) #For radiation purpose
         for i in xrange(self.nz):
@@ -84,6 +85,7 @@ cdef class MixedLayerModel:
         #Additional initial condition parameters that are not in the namelist
         self.p_surface = 102000.0  # surface pressure
         self.zi_i = 820.0  # initial BL height
+        self.dz_inv = 30.0
 
         self.t_surface = self.thetal_i  # t_surface = thetal_i * (p_surface/p_tilde)**(Rd/cp)
         self.rho0 = self.p_surface / Rd / self.t_surface
@@ -122,7 +124,7 @@ cdef class MixedLayerModel:
 
         # Get pressure profile
         def rhs(p, z):
-            T, ql = sat_adjst(np.exp(p), self.thetal_i, self.qt_surface)
+            T, ql, qi = sat_adjst(np.exp(p), self.thetal_i, self.qt_surface)
             return -g/(Rd*T*(1.0 - self.qt_surface + eps_vi*(self.qt_surface-ql)))
 
         p0 = np.log(self.p_surface)
@@ -132,24 +134,51 @@ cdef class MixedLayerModel:
         self.pressure_i = odeint(rhs, p0, np.array(self.z_interface), hmax=1.0)[:, 0]
         self.pressure_i = np.exp(self.pressure_i)
 
-        # Determine the cloud top level and above
-        for k in xrange(self.nz):
-            tmp[k] = self.z[k] - zi
-        idx = (np.abs(tmp)).argmin()
+        # # Determine the cloud top level and above
+        # for k in xrange(self.nz):
+        #     tmp[k] = self.z[k] - zi
+        # idx = (np.abs(tmp)).argmin()
+        #
+        # # get profiles
+        # for k in xrange(self.nz):
+        #     if k <= idx:
+        #         self.temperature[k], self.ql[k], self.qi[k] = sat_adjst(self.pressure[k], thetal, qt)
+        #         self.qt[k] = qt
+        #         self.thetal[k] = thetal
+        #     else:
+        #         self.thetal[k] = (self.thetal_ft + (zi - self.zi_i) * self.gamma_thetal) + \
+        #                                      (self.z[k] - zi) * self.gamma_thetal
+        #         self.temperature[k] = self.thetal[k] * (self.pressure[k] / p_tilde) ** (Rd / cpd)
+        #         self.qt[k] = qv_unsat(self.pressure[k], saturation_vapor_pressure(self.temperature[k]) * self.rh_ft)
+        #
+        #     self.qv[k] = self.qt[k] - self.ql[k] - self.qi[k]
+        #     alpha[k] = get_alpha(self.pressure[k], self.temperature[k], self.qt[k], self.qv[k])
 
         # get profiles
         for k in xrange(self.nz):
-            if k <= idx:
-                self.temperature[k], self.ql[k] = sat_adjst(self.pressure[k], thetal, qt)
-                self.qt[k] = qt
+            if self.z[k] <= zi:
+                self.temperature[k], self.ql[k], self.qi[k] = sat_adjst(self.pressure[k], thetal, qt)
                 self.thetal[k] = thetal
+            elif zi < self.z[k] <= (zi + self.dz_inv):
+                self.thetal[k] = thetal + (self.z[k] - zi)*self.thetal_inv / self.dz_inv
             else:
                 self.thetal[k] = (self.thetal_ft + (zi - self.zi_i) * self.gamma_thetal) + \
                                              (self.z[k] - zi) * self.gamma_thetal
                 self.temperature[k] = self.thetal[k] * (self.pressure[k] / p_tilde) ** (Rd / cpd)
                 self.qt[k] = qv_unsat(self.pressure[k], saturation_vapor_pressure(self.temperature[k]) * self.rh_ft)
 
-            self.qv[k] = self.qt[k] - self.ql[k]
+        qt_above_inv = np.amax(self.qt)
+
+        for k in xrange(self.nz):
+            if zi < self.z[k] <= (zi + self.dz_inv):
+                self.qt[k] = qt - (self.z[k] - zi) * (qt - qt_above_inv) / self.dz_inv
+                self.temperature[k], self.ql[k], self.qi[k] = sat_adjst(self.pressure[k], self.thetal[k], self.qt[k])
+
+        for k in xrange(self.nz):
+            if self.z[k] <= zi:
+                self.qt[k] = qt
+
+            self.qv[k] = self.qt[k] - self.ql[k] - self.qi[k]
             alpha[k] = get_alpha(self.pressure[k], self.temperature[k], self.qt[k], self.qv[k])
 
         self.rho = 1.0/np.array(alpha)
@@ -161,11 +190,14 @@ cdef class MixedLayerModel:
         NS.add_profile('thetal')
         NS.add_profile('qt')
         NS.add_profile('ql')
+        NS.add_profile('qi')
         NS.add_profile('temperature')
         NS.add_profile('rho')
+        NS.add_profile('pressure')
 
         NS.add_ts('cloud_base')
         NS.add_ts('lwp')
+        NS.add_ts('iwp')
 
         return
 
@@ -191,29 +223,62 @@ cdef class MixedLayerModel:
         # Determine the cloud top level and above
         for k in xrange(self.nz):
             tmp[k] = self.z[k] - zi
-            tmp2[k] = self.z[k] - zi*1.05
+            tmp2[k] = self.z[k] - zi*1.1
         idx = (np.abs(tmp)).argmin()
         idx_top = (np.abs(tmp2)).argmin()
 
+        # # get profiles
+        # for k in xrange(self.nz):
+        #     if k <= idx:
+        #         self.temperature[k], self.ql[k], self.qi[k] = sat_adjst(self.pressure[k], thetal, qt)
+        #         self.qt[k] = qt
+        #         self.thetal[k] = thetal
+        #     else:
+        #         self.thetal[k] = (self.thetal_ft + (zi - self.zi_i) * self.gamma_thetal) + \
+        #                                      (self.z[k] - zi) * self.gamma_thetal
+        #         self.temperature[k] = self.thetal[k] * (self.pressure[k] / p_tilde) ** (Rd / cpd)
+        #         self.qt[k] = qv_unsat(self.pressure[k], saturation_vapor_pressure(self.temperature[k]) * self.rh_ft)
+        #         self.ql[k] = 0.0
+        #         self.qi[k] = 0.0
+        #
+        #     self.qv[k] = self.qt[k] - self.ql[k] - self.qi[k]
+        #     alpha = get_alpha(self.pressure[k], self.temperature[k], self.qt[k], self.qv[k])
+        #     self.rho[k] = 1.0/alpha
+
         # get profiles
         for k in xrange(self.nz):
-            if k <= idx:
-                self.temperature[k], self.ql[k] = sat_adjst(self.pressure[k], thetal, qt)
-                self.qt[k] = qt
+            if self.z[k] <= zi:
+                self.temperature[k], self.ql[k], self.qi[k] = sat_adjst(self.pressure[k], thetal, qt)
                 self.thetal[k] = thetal
+            elif zi < self.z[k] <= (zi + self.dz_inv):
+                self.thetal[k] = thetal + (self.z[k] - zi)*self.thetal_inv / self.dz_inv
             else:
                 self.thetal[k] = (self.thetal_ft + (zi - self.zi_i) * self.gamma_thetal) + \
                                              (self.z[k] - zi) * self.gamma_thetal
                 self.temperature[k] = self.thetal[k] * (self.pressure[k] / p_tilde) ** (Rd / cpd)
                 self.qt[k] = qv_unsat(self.pressure[k], saturation_vapor_pressure(self.temperature[k]) * self.rh_ft)
-                self.ql[k] = 0.0
 
-            self.qv[k] = self.qt[k] - self.ql[k]
+        qt_above_inv = np.amax(self.qt)
+
+        for k in xrange(self.nz):
+            if zi < self.z[k] <= (zi + self.dz_inv):
+                self.qt[k] = qt - (self.z[k] - zi) * (qt - qt_above_inv) / self.dz_inv
+                self.temperature[k], self.ql[k], self.qi[k] = sat_adjst(self.pressure[k], self.thetal[k], self.qt[k])
+
+        for k in xrange(self.nz):
+            if self.z[k] <= zi:
+                self.qt[k] = qt
+
+            self.qv[k] = self.qt[k] - self.ql[k] - self.qi[k]
             alpha = get_alpha(self.pressure[k], self.temperature[k], self.qt[k], self.qv[k])
             self.rho[k] = 1.0/alpha
 
+        while self.ql[idx-1] > self.ql[idx]:
+            idx -= 1
+
         # get radiative flux jump at the cloud top
-        dfrad = (Ra.net_lw_flux[idx_top] - np.min(Ra.net_lw_flux))*0.5
+        # dfrad = (Ra.net_lw_flux[idx_top] - np.min(Ra.net_lw_flux))*0.5
+        dfrad = Ra.net_lw_flux[idx_top] - Ra.net_lw_flux[idx]
         dthetal = self.thetal[idx_top] - self.thetal[idx]
         dqt = self.qt[idx_top] - self.qt[idx]
 
@@ -221,11 +286,13 @@ cdef class MixedLayerModel:
         # qt_ft = qv_unsat(self.pressure[idx], saturation_vapor_pressure(temp) * self.rh_ft)
 
         B_mean = 6.63e-3 #BL-mean buoyancy flux
-        w_e = entrainment_moeng(B_mean, dthetal, dfrad, self.rho[idx])
+        # w_e = entrainment_moeng(B_mean, dthetal, dfrad, self.rho[idx])
+        w_e = entrainment_rate(0.85, dfrad, dthetal, self.rho[idx]) #2.24
 
         w_ls = get_ls_subsidence(self.z, self.zi_i, self.div_frac)[idx]
-
+        # print(w_ls, w_e)
         self.tendencies[0] = w_e + w_ls
+        # self.tendencies[1] = (w_e * dthetal - dfrad/cpd/self.rho[idx])/zi
         self.tendencies[1] = (w_e * dthetal - (Ra.net_lw_flux[idx_top] - Ra.net_lw_flux[0])/cpd/self.rho[idx])/zi
         self.tendencies[2] = w_e * dqt/zi
 
@@ -243,8 +310,10 @@ cdef class MixedLayerModel:
         NS.write_profile('thetal', self.thetal)
         NS.write_profile('qt', self.qt)
         NS.write_profile('ql', self.ql)
+        NS.write_profile('qi', self.qi)
         NS.write_profile('temperature', self.temperature)
         NS.write_profile('rho', self.rho)
+        NS.write_profile('pressure', self.pressure)
 
         cdef:
             Py_ssize_t kmin = 0
@@ -252,6 +321,7 @@ cdef class MixedLayerModel:
             Py_ssize_t k
             double cb
             double lwp
+            double iwp
 
         # Compute cloud bottom height
         cb = 99999.9
@@ -269,14 +339,21 @@ cdef class MixedLayerModel:
 
         NS.write_ts('lwp', lwp)
 
+        # Compute ice water path
+        with nogil:
+            for k in xrange(kmin, kmax):
+                iwp += self.rho[k] * self.qi[k] * self.dz
+
+        NS.write_ts('iwp', iwp)
+
         return
 
 
-cdef double entrainment_rate(double efficiency, double dfrad, double dthetal, double thetal, double rho):
+cdef double entrainment_rate(double efficiency, double dfrad, double dthetal, double rho):
     cdef:
         w_e
 
-    w_e = efficiency * dfrad / cpd / rho / dthetal
+    w_e = efficiency * dfrad / cpd / rho / dthetal + 0.0004
     return w_e
 
 cdef double entrainment_moeng(double B, double dthetal, double dfrad, double rho):

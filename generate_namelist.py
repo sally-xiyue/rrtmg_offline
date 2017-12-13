@@ -36,28 +36,29 @@ def Isdac():
     namelist['initial']['div_frac'] = 1.0 # fractional divergence rate
 
     namelist['grid'] = {}
-    namelist['grid']['dz'] = 1.0
+    namelist['grid']['dz'] = 5.0
 
     namelist['entrainment'] = {}
     namelist['entrainment']['efficiency'] = 0.7
 
     namelist['radiation'] = {}
-    namelist['radiation']['frequency'] = 60.0
+    namelist['radiation']['frequency'] = 300.0
     namelist['radiation']['n_buffer'] = 15 # adjust according to dz
     namelist['radiation']['stretch_factor'] = 1.5 # adjust according to dz
 
     namelist['time_stepping'] = {}
     namelist['time_stepping']['t'] = 0.0
-    namelist['time_stepping']['dt_initial'] = 10.0
-    namelist['time_stepping']['dt_max'] = 10.0
-    namelist['time_stepping']['t_max'] = 3600.0 * 12.0
+    namelist['time_stepping']['dt_initial'] = 300.0
+    # namelist['time_stepping']['dt_max'] = 60.0
+    namelist['time_stepping']['t_max'] = 3600.0 * 24.0
 
     namelist['stats_io'] = {}
-    namelist['stats_io']['frequency'] = 60.0
-    namelist['stats_io']['output_root'] = './output/'
+    namelist['stats_io']['frequency'] = 300.0
+    # namelist['stats_io']['output_root'] = './output/'
+    namelist['stats_io']['output_root'] = '/Users/xiyue/Clouds/mlm/output/data/'
 
     namelist['meta'] = {}
-    namelist['meta']['simname'] = 'IsdacMLM_test'
+    namelist['meta']['simname'] = 'IsdacMLM_dz5'
     namelist['meta']['casename'] = 'IsdacMLM'
 
     return namelist

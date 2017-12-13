@@ -58,6 +58,7 @@ cdef class Radiation:
         double [:] cfc12vmr
         double [:] cfc22vmr
         double [:] ccl4vmr
+        double IsdacCC_dT
 
 
     cpdef initialize(self, MixedLayerModel.MixedLayerModel mlm, NetCDFIO_Stats NS)
