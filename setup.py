@@ -58,12 +58,12 @@ else:
     print('Unknown system platform: ' + sys.platform + 'or unknown system name: ' + platform.node())
     sys.exit()
 
-_ext = Extension('mlm_thermodynamic_functions', ['mlm_thermodynamic_functions.pyx'], include_dirs=include_path,
-                 extra_compile_args=extra_compile_args, libraries=libraries, library_dirs=library_dirs,
-                 runtime_library_dirs=library_dirs, extra_objects=extra_objects)
-extensions.append(_ext)
+# _ext = Extension('mlm_thermodynamic_functions', ['mlm_thermodynamic_functions.pyx'], include_dirs=include_path,
+#                  extra_compile_args=extra_compile_args, libraries=libraries, library_dirs=library_dirs,
+#                  runtime_library_dirs=library_dirs, extra_objects=extra_objects)
+# extensions.append(_ext)
 
-_ext = Extension('MixedLayerModel', ['MixedLayerModel.pyx'], include_dirs=include_path,
+_ext = Extension('ReadProfiles', ['ReadProfiles.pyx'], include_dirs=include_path,
                  extra_compile_args=extra_compile_args, libraries=libraries, library_dirs=library_dirs,
                  runtime_library_dirs=library_dirs, extra_objects=extra_objects)
 extensions.append(_ext)
@@ -72,21 +72,21 @@ _ext = Extension('Radiation', ['Radiation.pyx'], include_dirs=include_path,
                  extra_compile_args=extra_compile_args, libraries=libraries, library_dirs=library_dirs,
                  runtime_library_dirs=library_dirs, extra_objects=extra_objects)
 extensions.append(_ext)
-
-_ext = Extension('TimeStepping', ['TimeStepping.pyx'], include_dirs=include_path,
-                 extra_compile_args=extra_compile_args, libraries=libraries, library_dirs=library_dirs,
-                 runtime_library_dirs=library_dirs, extra_objects=extra_objects)
-extensions.append(_ext)
+#
+# _ext = Extension('TimeStepping', ['TimeStepping.pyx'], include_dirs=include_path,
+#                  extra_compile_args=extra_compile_args, libraries=libraries, library_dirs=library_dirs,
+#                  runtime_library_dirs=library_dirs, extra_objects=extra_objects)
+# extensions.append(_ext)
 
 _ext = Extension('Simulation', ['Simulation.pyx'], include_dirs=include_path,
                  extra_compile_args=extra_compile_args, libraries=libraries, library_dirs=library_dirs,
                  runtime_library_dirs=library_dirs, extra_objects=extra_objects)
 extensions.append(_ext)
 
-_ext = Extension('NetCDFIO', ['NetCDFIO.pyx'], include_dirs=include_path,
-                 extra_compile_args=extra_compile_args, libraries=libraries, library_dirs=library_dirs,
-                 runtime_library_dirs=library_dirs)
-extensions.append(_ext)
+# _ext = Extension('NetCDFIO', ['NetCDFIO.pyx'], include_dirs=include_path,
+#                  extra_compile_args=extra_compile_args, libraries=libraries, library_dirs=library_dirs,
+#                  runtime_library_dirs=library_dirs)
+# extensions.append(_ext)
 
 #Build RRTMG
 

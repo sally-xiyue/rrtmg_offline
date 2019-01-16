@@ -11,8 +11,8 @@ def main():
 
     case_name = args.case_name
 
-    if case_name == 'Isdac':
-        namelist = Isdac()
+    if case_name == 'GCMVarying':
+        namelist = GCMVarying()
     else:
         print('Not a valid case name')
         exit()
@@ -20,31 +20,36 @@ def main():
     write_file(namelist)
 
 
-def Isdac():
+def GCMVarying():
 
     namelist = {}
 
-    namelist['initial'] = {}
-    namelist['initial']['SST'] = 265.0 #initial surface temperature
-    namelist['initial']['dTi'] = 5.0 #temperature jump at the inversion
-    namelist['initial']['rh0'] = 0.8 #Surface relative humidity
-    namelist['initial']['gamma'] = 5.0/1000. #free tropospheric lapse rate
-    namelist['initial']['rh'] = 0.6 #free tropospheric relative humidity
-    namelist['initial']['z_top'] = 820.0 #top of mixed layer
-    namelist['initial']['dSST'] = 0.0 #SST change (climate change)
-    namelist['initial']['divergence'] = 5.0e-6 # LS divergence
-    namelist['initial']['div_frac'] = 1.0 # fractional divergence rate
+    namelist['input'] = {}
+    namelist['input']['path'] = '/Users/xiyue/Clouds/GCM/output/Output.GCMVarying_seaice_1_50x_lat70_lon0_sea_ice.73e98/stats/'
+    namelist['input']['case'] = 'GCMVarying_seaice_1_50x_lat70_lon0_sea_ice'
+    namelist['input']['file'] = 'Stats.'+namelist['input']['case']+'.nc'
+    namelist['input']['t1'] = 0*4
+    namelist['input']['t2'] = 25*4
+    namelist['input']['time_average'] = False
 
-    namelist['grid'] = {}
-    namelist['grid']['dz'] = 5.0
+    namelist['input']['albedo_path'] = '/Users/xiyue/Clouds/GCM/output/Output.GCMVarying_seaice_1_00x_lat70_lon0_sea_ice.f099b/stats/'
+    namelist['input']['albedo_case'] = 'GCMVarying_seaice_1_00x_lat70_lon0_sea_ice'
+    namelist['input']['albedo_file'] = 'Stats.'+namelist['input']['albedo_case']+'.nc'
 
-    namelist['entrainment'] = {}
-    namelist['entrainment']['efficiency'] = 0.7
+    namelist['input']['fix_T'] = True
+    namelist['input']['fix_qv'] = True
+    namelist['input']['fix_cloud'] = False
+    namelist['input']['fix_albedo'] = True
+
+    namelist['output'] = {}
+    namelist['output']['file'] = 'rrtm_output_0_liq.pkl'
 
     namelist['radiation'] = {}
+    namelist['radiation']['co2_factor'] = 1.0*4
+    namelist['radiation']['use_RRTM'] = True
     namelist['radiation']['frequency'] = 300.0
-    namelist['radiation']['n_buffer'] = 15 # adjust according to dz
-    namelist['radiation']['stretch_factor'] = 1.5 # adjust according to dz
+    namelist['radiation']['n_buffer'] = 2 # adjust according to dz
+    namelist['radiation']['stretch_factor'] = 1.0 # adjust according to dz
 
     namelist['time_stepping'] = {}
     namelist['time_stepping']['t'] = 0.0
@@ -58,8 +63,8 @@ def Isdac():
     namelist['stats_io']['output_root'] = '/Users/xiyue/Clouds/mlm/output/data/'
 
     namelist['meta'] = {}
-    namelist['meta']['simname'] = 'IsdacMLM_dz5'
-    namelist['meta']['casename'] = 'IsdacMLM'
+    namelist['meta']['simname'] = 'GCMVarying'
+    namelist['meta']['casename'] = 'GCMVarying'
 
     return namelist
 

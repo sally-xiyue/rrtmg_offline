@@ -15,39 +15,14 @@ from libc.math cimport pow, cbrt, exp, fmin, fmax
 include 'parameters.pxi'
 from profiles import profile_data
 
-cimport MixedLayerModel
-cimport TimeStepping
-from NetCDFIO cimport NetCDFIO_Stats
-from mlm_thermodynamic_functions import *
-from mlm_thermodynamic_functions cimport *
-#
-# cdef class Radiation_:
-#     def __init__(self, namelist):
-#         # if namelist specifies RRTM is to be used, this will override any case-specific radiation schemes
-#         try:
-#             casename = namelist['radiation']
-#         except:
-#             casename = 'rrtm'
-#
-#         if casename == 'Isdac':
-#             self.scheme = RadiationIsdac(namelist)
-#         else:
-#             self.scheme = RadiationRRTM(namelist)
-#             print('Using default RRTM radiation scheme!')
-#
-#         return
-#
-#     cpdef initialize(self):
-#         self.scheme.initialize()
-#         return
-#
-#     cpdef initialize_profiles(self, MixedLayerModel.MixedLayerModel mlm):
-#         self.scheme.initialize_profiles(mlm)
-#         return
-#
-#     cpdef update(self, MixedLayerModel.MixedLayerModel mlm, TimeStepping.TimeStepping TS):
-#         self.scheme.update(mlm, TS)
-#         return
+cimport ReadProfiles
+# cimport TimeStepping
+# from NetCDFIO cimport NetCDFIO_Stats
+# from mlm_thermodynamic_functions import *
+# from mlm_thermodynamic_functions cimport *
+import cPickle
+import pickle as pkl
+
 
 # Note: the RRTM modules are compiled in the 'RRTMG' directory:
 cdef extern:
@@ -75,47 +50,6 @@ cdef extern:
              double *swuflx  ,double *swdflx  ,double *swhr    ,double *swuflxc ,double *swdflxc ,double *swhrc)
 
 
-cdef class RadiationIsdac:
-    def __init__(self, namelist):
-        return
-
-    cpdef initialize(self):
-        return
-
-    cpdef initialize_profiles(self, MixedLayerModel.MixedLayerModel mlm):
-        self.net_lw_flux = np.zeros((mlm.nz,), dtype=np.double)
-        # print('net_lw_flux initialized')
-        return
-
-    cpdef update(self, MixedLayerModel.MixedLayerModel mlm, TimeStepping.TimeStepping TS):
-        cdef:
-            double kap = 170.0
-            double f0 = 72.0
-            double f1 = 15.0
-            Py_ssize_t nz = mlm.nz
-            Py_ssize_t k
-            double [:] f_rad = np.zeros((nz+1,), dtype=np.double)
-            double [:] f_heat = np.zeros((nz,), dtype=np.double)
-            double q_1 = 0.0
-            double q_0 = 0.0
-
-        f_rad[0] = f1 * exp(-q_1)
-        for k in xrange(1, nz + 1):
-            q_1 += kap * mlm.rho[k-1] * mlm.ql[k - 1] * mlm.dz
-            f_rad[k] += f1 * exp(-q_1)
-
-        f_rad[nz] += f0 * exp(-q_0)
-        for k in xrange(nz - 1, -1, -1):
-            q_0 += kap * mlm.rho[k] * mlm.ql[k] * mlm.dz
-            f_rad[k] += f0 * exp(-q_0)
-
-        for k in xrange(nz):
-            # f_heat[k] = -(f_rad[k + 1] - f_rad[k]) / mlm.dz / mlm.rho0
-            self.net_lw_flux[k] = f_rad[k+1]
-
-        return
-
-
 cdef class Radiation:
     def __init__(self, namelist):
 
@@ -130,26 +64,32 @@ cdef class Radiation:
         try:
             self.n_buffer = namelist['radiation']['n_buffer']
         except:
-            self.n_buffer = 15
+            self.n_buffer = 4
 
         try:
             self.stretch_factor = namelist['radiation']['stretch_factor']
         except:
-            self.stretch_factor = 1.5
+            self.stretch_factor = 1.0
 
-        self.patch_pressure = 650.00*100.0
+        self.patch_pressure = 400.00
 
         # Namelist options related to gas concentrations
-        self.co2_factor = 1.0
+        try:
+            self.co2_factor = namelist['radiation']['co2_factor']
+        except:
+            self.co2_factor = 1.0
+
         self.h2o_factor = 1.0
 
         # Namelist options related to insolation
-        self.dyofyr = 0
-        self.adjes = 0.0
-        self.scon = 1360.0
-        self.coszen = 2.0/np.pi
+        self.dyofyr = 0#80
+        self.adjes = 1.0
+        self.scon = 1365.0
+        # self.coszen = np.cos(70./180*np.pi)/np.pi
+
+
         self.adif = 0.06
-        self.adir = 0.0
+        # self.adir = 0.38
         self.uniform_reliq = False
 
         try:
@@ -165,21 +105,23 @@ cdef class Radiation:
         except:
             self.IsdacCC_dT = 0.0
 
-        # self.bl = MixedLayerModel.boundary_layer_profiles(namelist)
+        # self.bl = ReadProfiles.boundary_layer_profiles(namelist)
+
+        self.out_file = str(namelist['output']['file'])
 
         return
 
-    cpdef initialize(self, MixedLayerModel.MixedLayerModel mlm, NetCDFIO_Stats NS):
+    cpdef initialize(self, ReadProfiles.ReadProfiles pf):
 
-        self.heating_rate = np.zeros((mlm.nz,), dtype=np.double)
-        self.net_lw_flux = np.zeros((mlm.nz,), dtype=np.double)
+        self.heating_rate = np.zeros((pf.nz,), dtype=np.double)
+        self.net_lw_flux = np.zeros((pf.nz,), dtype=np.double)
 
-        NS.add_profile('net_lw_flux')
-        NS.add_profile('radiative_heating_rate')
+        # NS.add_profile('net_lw_flux')
+        # NS.add_profile('radiative_heating_rate')
 
         return
 
-    cpdef initialize_profiles(self, MixedLayerModel.MixedLayerModel mlm):
+    cpdef initialize_profiles(self, ReadProfiles.ReadProfiles pf):
 
         cdef:
             # Py_ssize_t qv_shift = DV.get_varshift(Gr, 'qv')
@@ -187,11 +129,11 @@ cdef class Radiation:
             # double [:,:] qv_pencils =  self.z_pencil.forward_double(&Gr.dims, Pa, &DV.values[qv_shift])
             # double [:,:] t_pencils =  self.z_pencil.forward_double(&Gr.dims, Pa, &DV.values[t_shift])
 
-            Py_ssize_t nz = mlm.nz
+            Py_ssize_t nz = pf.nz
             Py_ssize_t i,k
 
 
-        # mlm.get_profiles(mlm_vars)
+        # pf.get_profiles(mlm_vars)
 
         # Construct the extension of the profiles, including a blending region between the given profile and LES domain (if desired)
         pressures = profile_data[self.profile_name]['pressure'][:]
@@ -199,7 +141,16 @@ cdef class Radiation:
         # vapor_mixing_ratios = profile_data[self.profile_name]['vapor_mixing_ratio'][:]
         specific_humidity = profile_data[self.profile_name]['specific_humidity'][:]
 
-        n_profile = len(pressures[pressures<=self.patch_pressure]) # nprofile = # of points in the fixed profile to use
+
+        dp = np.abs(pf.pressure[-1] - pf.pressure[-2])
+        self.patch_pressure = np.minimum(self.patch_pressure, pf.pressure[-1] - dp)
+
+        # n_profile = len(pressures[pressures<=self.patch_pressure]) # nprofile = # of points in the fixed profile to use
+        n_profile = 0
+        for pressure in pressures:
+            if pressure <= self.patch_pressure:
+                n_profile += 1
+        # print(n_profile)
         self.n_ext =  n_profile + self.n_buffer # n_ext = total # of points to add to LES domain (buffer portion + fixed profile portion)
 
 
@@ -214,8 +165,8 @@ cdef class Radiation:
         cdef Py_ssize_t count = 0
         for k in xrange(len(pressures)-n_profile, len(pressures)):
             self.p_ext[self.n_buffer+count] = pressures[k]
-            qt_new = get_humidity(temperatures[k], specific_humidity[k], pressures[k], temperatures[k]+self.IsdacCC_dT)
-            self.t_ext[self.n_buffer+count] = temperatures[k] + self.IsdacCC_dT
+            qt_new = specific_humidity[k]
+            self.t_ext[self.n_buffer+count] = temperatures[k]
             self.rv_ext[self.n_buffer+count] = qt_new / (1.0 - qt_new)
             count += 1
 
@@ -223,9 +174,9 @@ cdef class Radiation:
         # Now  create the buffer zone
         if self.n_buffer > 0:
             #dp = np.abs(Ref.p0_half_global[nz + gw -1] - Ref.p0_half_global[nz + gw -2])
-            dp = np.abs(mlm.pressure[-1] - mlm.pressure[-2])
+            dp = np.abs(pf.pressure[-1] - pf.pressure[-2])
             #self.p_ext[0] = Ref.p0_half_global[nz + gw -1] - dp
-            self.p_ext[0] = mlm.pressure[-1] - dp
+            self.p_ext[0] = pf.pressure[-1] - dp
 
             # print(self.p_ext[0])
             for i in range(1,self.n_buffer):
@@ -235,18 +186,18 @@ cdef class Radiation:
                 # print i, self.p_ext[i]
 
             # Pressures of "data" points for interpolation, must be INCREASING pressure
-            xi = np.array([self.p_ext[self.n_buffer+1],self.p_ext[self.n_buffer],mlm.pressure[-1],mlm.pressure[-2] ],dtype=np.double)
+            xi = np.array([self.p_ext[self.n_buffer+1],self.p_ext[self.n_buffer],pf.pressure[-1],pf.pressure[-2] ],dtype=np.double)
             # print(xi)
 
 
             # interpolation for temperature
-            ti = np.array([self.t_ext[self.n_buffer+1],self.t_ext[self.n_buffer], mlm.temperature[-1], mlm.temperature[-2] ], dtype = np.double)
+            ti = np.array([self.t_ext[self.n_buffer+1],self.t_ext[self.n_buffer], pf.temperature[-1], pf.temperature[-2] ], dtype = np.double)
             # interpolation for vapor mixing ratio
             # rv_m2 = qv_pencils[0, nz-2]/ (1.0 - qv_pencils[0, nz-2])
             # rv_m1 = qv_pencils[0,nz-1]/(1.0-qv_pencils[0,nz-1])
 
-            rv_m2 = mlm.qv[nz-2]/(1.0 - mlm.qv[nz-2])
-            rv_m1 = mlm.qv[nz-1]/(1.0 - mlm.qv[nz-1])
+            rv_m2 = pf.qv[nz-2]/(1.0 - pf.qv[nz-2])
+            rv_m1 = pf.qv[nz-1]/(1.0 - pf.qv[nz-1])
 
             ri = np.array([self.rv_ext[self.n_buffer+1],self.rv_ext[self.n_buffer], rv_m1, rv_m2 ], dtype = np.double)
 
@@ -256,31 +207,41 @@ cdef class Radiation:
 
         # # Plotting to evaluate implementation of buffer zone
         # plt.figure(1)
-        # plt.scatter(self.rv_ext,self.p_ext)
-        # plt.plot(vapor_mixing_ratios, pressures)
-        # plt.plot(mlm.qv, mlm.pressure)
-        # plt.savefig('rrtm_buffer_rv.png')
+        # plt.scatter(self.rv_ext,self.p_ext, label='Ext')
+        # plt.plot(specific_humidity, pressures, label='Profile.py')
+        # plt.plot(pf.qv, pf.pressure, label='LES')
+        # plt.legend()
+        # # plt.savefig('rrtm_buffer_rv.png')
         # plt.figure(2)
-        # plt.scatter(self.t_ext,self.p_ext)
-        # plt.plot(temperatures,pressures)
-        # plt.plot(mlm.temperature, mlm.pressure)
-        # plt.savefig('rrtm_buffer_t.png')
+        # plt.scatter(self.t_ext,self.p_ext, label='Ext')
+        # plt.plot(temperatures,pressures, label='Profile.py')
+        # plt.plot(pf.temperature, pf.pressure, label='LES')
+        # plt.legend()
+        # # plt.savefig('rrtm_buffer_t.png')
         # plt.figure(10)
-        # plt.plot(mlm.ql, mlm.pressure)
+        # plt.plot(pf.ql, pf.pressure)
         # plt.show()
 
         self.p_full = np.zeros((self.n_ext+nz,), dtype=np.double)
         self.pi_full = np.zeros((self.n_ext+1+nz,),dtype=np.double)
 
-        self.p_full[0:nz] = mlm.pressure #Ref.p0_half_global[gw:nz+gw] # at cell center
+        self.p_full[0:nz] = pf.pressure #Ref.p0_half_global[gw:nz+gw] # at cell center
         self.p_full[nz:]=self.p_ext[:]
+        # print('p_ext ', np.array(self.p_ext))
 
         # self.pi_full[0:nz] = Ref.p0_global[gw:nz+gw] # at cell interface
-        self.pi_full[0:nz] = mlm.pressure_i[1:]
+        # self.pi_full[0:nz] = pf.pressure_i[1:]
+        self.pi_full[0:nz] = pf.pressure_i[:-1]
+        # print('pi_full before all filled:', np.array(self.pi_full))
+        # print('pf.pressure_i:', np.array(pf.pressure_i))
 
         for i in range(nz,self.n_ext+nz):
             self.pi_full[i] = (self.p_full[i] + self.p_full[i-1]) * 0.5
         self.pi_full[self.n_ext +  nz] = 2.0 * self.p_full[self.n_ext + nz -1 ] - self.pi_full[self.n_ext + nz -1]
+
+        # print('pi_full:', np.array(self.pi_full))
+        # print('p_full:', np.array(self.p_full))
+
 
         # try to get ozone
         try:
@@ -398,20 +359,47 @@ cdef class Radiation:
         self.cfc22vmr = np.array( tmpTrace[:,7],dtype=np.double, order='F')
         self.ccl4vmr  =  np.array(tmpTrace[:,8],dtype=np.double, order='F')
 
+
+        #Initialize NetCDF4 for RRTM outputs
+        root_grp = nc.Dataset(pf.out_file, 'w', format='NETCDF4')
+        root_grp.createDimension('z', len(self.pi_full))
+        root_grp.createDimension('t', None)
+        pi_full = root_grp.createVariable('pi_full', 'f8', ('z'))
+        pi_full[:] = np.array(self.pi_full)
+        root_grp.createVariable('t', 'f8', ('t'))
+
+        root_grp.createVariable('uflx_lw', 'f8', ('t', 'z'))
+        root_grp.createVariable('uflxc_lw', 'f8', ('t', 'z'))
+        root_grp.createVariable('dflx_lw', 'f8', ('t', 'z'))
+        root_grp.createVariable('dflxc_lw', 'f8', ('t', 'z'))
+        root_grp.createVariable('uflx_sw', 'f8', ('t', 'z'))
+        root_grp.createVariable('uflxc_sw', 'f8', ('t', 'z'))
+        root_grp.createVariable('dflx_sw', 'f8', ('t', 'z'))
+        root_grp.createVariable('dflxc_sw', 'f8', ('t', 'z'))
+
+        root_grp.close()
+
         return
 
-    cpdef update(self, MixedLayerModel.MixedLayerModel mlm, TimeStepping.TimeStepping TS):
-        if TS.rk_step == 0:
-            if self.radiation_frequency <= 0.0:
-                self.update_RRTM(mlm)
-            elif TS.t >= self.next_radiation_calculate:
-                self.update_RRTM(mlm)
-                self.next_radiation_calculate = (TS.t//self.radiation_frequency + 1.0) * self.radiation_frequency
+    cpdef update(self, ReadProfiles.ReadProfiles pf):
+        # if TS.rk_step == 0:
+        #     if self.radiation_frequency <= 0.0:
+        #         self.update_RRTM(pf)
+        #     elif TS.t >= self.next_radiation_calculate:
+        #         self.update_RRTM(pf)
+        #         self.next_radiation_calculate = (TS.t//self.radiation_frequency + 1.0) * self.radiation_frequency
+
+        self.update_RRTM(pf)
+
         return
 
-    cdef update_RRTM(self, MixedLayerModel.MixedLayerModel mlm):
+    cdef update_RRTM(self, ReadProfiles.ReadProfiles pf):
+
+        self.coszen = pf.toa_sw/self.scon
+        self.adir = pf.albedo
+
         cdef:
-            Py_ssize_t nz = mlm.nz
+            Py_ssize_t nz = pf.nz
             Py_ssize_t nz_full = self.n_ext + nz
             Py_ssize_t k
             Py_ssize_t n_pencils = 1
@@ -423,7 +411,7 @@ cdef class Radiation:
             double [:] plev_in = np.zeros((nz_full + 1), dtype=np.double, order='F')
             double [:] tlay_in = np.zeros((nz_full,), dtype=np.double, order='F')
             double [:] tlev_in = np.zeros((nz_full + 1), dtype=np.double, order='F')
-            double [:] tsfc_in = np.ones((n_pencils),dtype=np.double,order='F') * mlm.t_surface
+            double [:] tsfc_in = np.ones((n_pencils),dtype=np.double,order='F') * pf.t_surface
             double [:] h2ovmr_in = np.zeros((nz_full,),dtype=np.double,order='F')
             double [:] o3vmr_in  = np.zeros((nz_full,),dtype=np.double,order='F')
             double [:] co2vmr_in = np.zeros((nz_full,),dtype=np.double,order='F')
@@ -480,16 +468,17 @@ cdef class Radiation:
             h2ovmr_in[k] = self.rv_ext[k-nz] * Rv/Rd * self.h2o_factor
                 # Assuming for now that there is no condensate above LES domain!
         for k in xrange(nz):
-            tlay_in[k] = mlm.temperature[k]
-            h2ovmr_in[k] = mlm.qv[k]/ (1.0 - mlm.qv[k])* Rv/Rd * self.h2o_factor
-            rl_full[k] = (mlm.ql[k])/ (1.0 - mlm.qv[k])
-            ri_full[k] = (mlm.qi[k])/ (1.0 - mlm.qv[k])
-            # ri_full[k] = 0.0
-            cliqwp_in[k] = ((mlm.ql[k])/ (1.0 - mlm.qv[k])
+            tlay_in[k] = pf.temperature[k]
+            h2ovmr_in[k] = pf.qv[k]/ (1.0 - pf.qv[k])* Rv/Rd * self.h2o_factor
+            rl_full[k] = (pf.ql[k])/ (1.0 - pf.qv[k])
+            # ri_full[k] = (pf.qi[k])/ (1.0 - pf.qv[k])
+            ri_full[k] = 0.0
+            cliqwp_in[k] = ((pf.ql[k])/ (1.0 - pf.qv[k])
                                *1.0e3*(self.pi_full[k] - self.pi_full[k+1])/g)
-            cicewp_in[k] = ((mlm.qi[k])/ (1.0 - mlm.qv[k])
+            cicewp_in[k] = ((pf.qi[k])/ (1.0 - pf.qv[k])
                                *1.0e3*(self.pi_full[k] - self.pi_full[k+1])/g)
-            if mlm.ql[k] + mlm.qi[k] > ql_threshold:
+            # if pf.ql[k] + pf.qi[k] > ql_threshold:
+            if pf.ql[k] > ql_threshold:
                 cldfr_in[k] = 1.0
 
 
@@ -514,15 +503,16 @@ cdef class Radiation:
                                         fmax(cldfr_in[k],1.0e-6))/(4.0*pi*1.0e3*100.0))**(1.0/3.0)
                     reliq_in[k] = fmin(fmax(reliq_in[ k]*rv_to_reff, 2.5), 60.0)
 
-                # Boudala et al. (2002) Eqn 10a
+                # Boudala et al. (2002) Eqn 10a, this is dge (generalized effective size),
+                # and is what iceflglw=3 calls for. Will only work with iceflglw=iceflgsw=3!
                 reice_in[k] = 53.005 * ((self.p_full[k]/Rd/tlay_in[k]*ri_full[k]*1.0e3)/
                                             fmax(cldfr_in[k],1.0e-6)) ** 0.06 \
                                       * exp(0.013*(tlay_in[k] - 273.16))
-                reice_in[k] = fmin(fmax(reice_in[k]/1.54, 5.0), 140.0) # Threshold from rrtmg sw instruction
+                reice_in[k] = fmin(fmax(reice_in[k], 5.0), 140.0) # Threshold from rrtmg sw instruction
 
 
             with gil:
-                tlev_in[0] = mlm.t_surface
+                tlev_in[0] = pf.t_surface
             plev_in[0] = self.pi_full[0]/100.0
             for k in xrange(1,nz_full):
                 tlev_in[k] = 0.5*(tlay_in[k-1]+tlay_in[k])
@@ -530,11 +520,36 @@ cdef class Radiation:
             tlev_in[nz_full] = 2.0*tlay_in[nz_full-1] - tlev_in[nz_full-1]
             plev_in[nz_full] = self.pi_full[nz_full]/100.0
 
-        # Plot the variables to check
+        #========================================
+
+        # # Test whether RRTM works
+        # # Construct the extension of the profiles, including a blending region between the given profile and LES domain (if desired)
+        # pressures = profile_data[self.profile_name]['pressure'][::-1]
+        # temperatures = profile_data[self.profile_name]['temperature'][::-1]
+        # vapor_mixing_ratios = profile_data[self.profile_name]['vapor_mixing_ratio'][:]
+        # specific_humidity = profile_data[self.profile_name]['specific_humidity'][::-1]
+        #
+        # #Interpolate onto input grid
+        # tlay_in = pchip_interpolate(pressures, temperatures, play_in)
+        # h2ovmr_in = pchip_interpolate(pressures, vapor_mixing_ratios, play_in) * Rv/Rd * self.h2o_factor
+        #
+        # for k in xrange(nz_full):
+        #     tlev_in[0] = pf.t_surface
+        #     plev_in[0] = self.pi_full[0]/100.0
+        # for k in xrange(1,nz_full):
+        #     tlev_in[k] = 0.5*(tlay_in[k-1]+tlay_in[k])
+        #     plev_in[k] = self.pi_full[k]/100.0
+        # tlev_in[nz_full] = 2.0*tlay_in[nz_full-1] - tlev_in[nz_full-1]
+        # plev_in[nz_full] = self.pi_full[nz_full]/100.0
+
+        #========================================
+
+        # # Plot the variables to check
         # plt.figure(3)
         # plt.subplot(121)
-        # plt.plot(tlay_in, self.p_full)
-        # plt.plot(tlev_in, self.pi_full)
+        # plt.plot(tlay_in, play_in, label='tlay')
+        # plt.plot(tlev_in, plev_in, label='tlev')
+        # plt.legend()
         # plt.xlabel('tlay_in tlev_in')
         # plt.subplot(122)
         # plt.plot(h2ovmr_in, self.p_full)
@@ -554,6 +569,10 @@ cdef class Radiation:
         # plt.subplot(122)
         # plt.plot(reliq_in, self.p_full)
         # plt.xlabel('reliq_in')
+        # plt.figure(6)
+        # plt.subplot(122)
+        # plt.plot(reice_in, self.p_full)
+        # plt.xlabel('reice_in')
         # plt.show()
 
         cdef:
@@ -569,6 +588,7 @@ cdef class Radiation:
             int iceflgsw = 3
             int liqflgsw = 1
 
+        # print('Begin RRTM calculations!')
         c_rrtmg_lw (
              &ncol    ,&nlay    ,&icld    ,&idrv,
              &play_in[0]    ,&plev_in[0]    ,&tlay_in[0]    ,&tlev_in[0]    ,&tsfc_in[0]    ,
@@ -579,7 +599,7 @@ cdef class Radiation:
              &tauaer_lw_in[0,0]  ,
              &uflx_lw_out[0]    ,&dflx_lw_out[0]    ,&hr_lw_out[0]      ,&uflxc_lw_out[0]   ,&dflxc_lw_out[0],  &hrc_lw_out[0],
              &duflx_dt_out[0],&duflxc_dt_out[0] )
-
+        # print('Done RRTM LW!')
         c_rrtmg_sw (
             &ncol, &nlay, &icld, &iaer, &play_in[0], &plev_in[0], &tlay_in[0], &tlev_in[0],&tsfc_in[0],
             &h2ovmr_in[0], &o3vmr_in[0], &co2vmr_in[0], &ch4vmr_in[0], &n2ovmr_in[0],&o2vmr_in[0],
@@ -591,44 +611,135 @@ cdef class Radiation:
              &tauaer_sw_in[0,0]  ,&ssaaer_sw_in[0,0]  ,&asmaer_sw_in[0,0]  ,&ecaer_sw_in[0,0]   ,
              &uflx_sw_out[0]    ,&dflx_sw_out[0]    ,&hr_sw_out[0]      ,&uflxc_sw_out[0]   ,&dflxc_sw_out[0], &hrc_sw_out[0])
 
+        # print('Done RRTM SW!')
+        # for k in xrange(nz):
+        #     self.heating_rate[k] = (hr_lw_out[k] + hr_sw_out[k]) * pf.rho[k] * cpd/86400.0
+        #     self.net_lw_flux[k] = uflx_lw_out[k] - dflx_lw_out[k]
 
-        for k in xrange(nz):
-            self.heating_rate[k] = (hr_lw_out[k] + hr_sw_out[k]) * mlm.rho[k] * cpd/86400.0
-            self.net_lw_flux[k] = uflx_lw_out[k] - dflx_lw_out[k]
+        # print(np.array(uflx_lw_out))
+        # print(np.array(dflx_lw_out))
+        # print(np.array(uflx_sw_out))
+
+        # print(dflx_sw_out[-1])
+
+        # print(np.array(hr_lw_out))
+        # print(np.array(hr_sw_out))
 
         # plt.figure(6)
         # plt.subplot(121)
-        # plt.plot(uflx_lw_out, self.pi_full)
-        # plt.plot(dflx_lw_out, self.pi_full)
+        # plt.plot(uflx_lw_out, self.pi_full, 'b')
+        # plt.plot(uflxc_lw_out, self.pi_full, 'b--')
+        # plt.plot(dflx_lw_out, self.pi_full, 'r')
+        # plt.plot(dflxc_lw_out, self.pi_full, 'r--')
         # plt.xlabel('lw_out')
         # plt.subplot(122)
-        # plt.plot(uflx_sw_out, self.pi_full)
-        # plt.plot(dflx_sw_out, self.pi_full)
+        # plt.plot(uflx_sw_out, self.pi_full, 'b')
+        # plt.plot(dflx_sw_out, self.pi_full, 'r')
+        # plt.plot(uflxc_sw_out, self.pi_full, 'b--')
+        # plt.plot(dflxc_sw_out, self.pi_full, 'r--')
         # plt.xlabel('sw_out')
         # plt.figure(7)
         # plt.subplot(121)
-        # plt.plot(self.heating_rate, mlm.pressure)
-        # plt.xlabel('heating rate')
-        # plt.subplot(122)
-        # plt.plot(self.net_lw_flux, mlm.pressure)
-        # plt.xlabel('net lw flux')
+        # # plt.plot(self.heating_rate, pf.pressure)
+        # plt.plot(hr_lw_out, self.p_full, 'r', label='LW')
+        # plt.plot(hrc_lw_out, self.p_full, 'r--',label='LW')
+        # plt.plot(hr_sw_out, self.p_full, label='SW')
+        # plt.xlabel('heating rates')
+        # plt.legend()
+        # # plt.subplot(122)
+        # # plt.plot(self.net_lw_flux, pf.pressure)
+        # # plt.xlabel('net lw flux')
         # plt.show()
 
+        #==============================================
+        #Save the RRTM outputs
+
+        # data_out = {}
+        # data_out['p_full'] = np.array(self.p_full)
+        # data_out['pi_full'] = np.array(self.pi_full)
+        #
+        # #LW fluxes
+        # data_out['uflx_lw'] = np.array(uflx_lw_out)
+        # data_out['uflxc_lw'] = np.array(uflxc_lw_out)
+        # data_out['dflx_lw'] = np.array(dflx_lw_out)
+        # data_out['dflxc_lw'] = np.array(dflxc_lw_out)
+        #
+        # #SW fluxes
+        # data_out['uflx_sw'] = np.array(uflx_sw_out)
+        # data_out['uflxc_sw'] = np.array(uflxc_sw_out)
+        # data_out['dflx_sw'] = np.array(dflx_sw_out)
+        # data_out['dflxc_sw'] = np.array(dflxc_sw_out)
+        #
+        # #Heating rates (K/day)
+        # data_out['hr_lw'] = np.array(hr_lw_out)
+        # data_out['hrc_lw'] = np.array(hrc_lw_out)
+        # data_out['hr_sw'] = np.array(hr_sw_out)
+        # data_out['hrc_sw'] = np.array(hrc_sw_out)
+        #
+        #
+        # output_path = pf.path+self.out_file
+        # fh = open(output_path, 'wb')
+        # pkl.dump(data_out, fh)
+        # fh.close()
+
+        # NetCDF4 format
+        root_grp = nc.Dataset(pf.out_file, 'r+', format='NETCDF4')
+        #First write time
+        rrtm_t = root_grp.variables['t']
+        rrtm_t[rrtm_t.shape[0]] = pf.count
+
+        var = None
+        var = root_grp.variables['uflx_lw']
+        var[-1, :] = np.array(uflx_lw_out)
+
+        var = None
+        var = root_grp.variables['uflxc_lw']
+        var[-1, :] = np.array(uflxc_lw_out)
+
+        var = None
+        var = root_grp.variables['dflx_lw']
+        var[-1, :] = np.array(dflx_lw_out)
+
+        var = None
+        var = root_grp.variables['dflxc_lw']
+        var[-1, :] = np.array(dflxc_lw_out)
+
+        var = None
+        var = root_grp.variables['uflx_sw']
+        var[-1, :] = np.array(uflx_sw_out)
+
+        var = None
+        var = root_grp.variables['uflxc_sw']
+        var[-1, :] = np.array(uflxc_sw_out)
+
+        var = None
+        var = root_grp.variables['dflx_sw']
+        var[-1, :] = np.array(dflx_sw_out)
+
+        var = None
+        var = root_grp.variables['dflxc_sw']
+        var[-1, :] = np.array(dflxc_sw_out)
+
+        root_grp.close()
+
+        # print("Finished saving RRTM output!")
+
+
 
         return
 
-    cpdef stats_io(self, NetCDFIO_Stats NS):
+    # cpdef stats_io(self, NetCDFIO_Stats NS):
+    #
+    #     NS.write_profile('net_lw_flux', self.net_lw_flux)
+    #     NS.write_profile('radiative_heating_rate', self.heating_rate)
+    #
+    #     return
 
-        NS.write_profile('net_lw_flux', self.net_lw_flux)
-        NS.write_profile('radiative_heating_rate', self.heating_rate)
-
-        return
-
-def get_humidity(temperature_old, qt_old, pressure, temperature_new):
-    pv_star_1 = saturation_vapor_pressure(temperature_old)
-    pv_1 = (pressure * qt_old) / (eps_v * (1.0 - qt_old) + qt_old)
-    rh_ = pv_1 / pv_star_1
-    pv_star_2 = saturation_vapor_pressure(temperature_new)
-    pv_2 = rh_ * pv_star_2
-    qt_new = 1.0/(eps_vi * (pressure - pv_2)/pv_2 + 1.0)
-    return qt_new
+# def get_humidity(temperature_old, qt_old, pressure, temperature_new):
+#     pv_star_1 = saturation_vapor_pressure(temperature_old)
+#     pv_1 = (pressure * qt_old) / (eps_v * (1.0 - qt_old) + qt_old)
+#     rh_ = pv_1 / pv_star_1
+#     pv_star_2 = saturation_vapor_pressure(temperature_new)
+#     pv_2 = rh_ * pv_star_2
+#     qt_new = 1.0/(eps_vi * (pressure - pv_2)/pv_2 + 1.0)
+#     return qt_new

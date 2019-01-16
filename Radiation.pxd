@@ -1,22 +1,6 @@
-cimport MixedLayerModel
-cimport TimeStepping
-from NetCDFIO cimport NetCDFIO_Stats
-
-# cdef class Radiation_:
-#     cdef:
-#         public object scheme
-#         # public double [:] net_lw_flux
-#     cpdef initialize(self)
-#     cpdef initialize_profiles(self, MixedLayerModel.MixedLayerModel mlm)
-#     cpdef update(self, MixedLayerModel.MixedLayerModel mlm, TimeStepping.TimeStepping TS)
-#
-
-cdef class RadiationIsdac:
-    cdef:
-        public double [:] net_lw_flux
-    cpdef initialize(self)
-    cpdef initialize_profiles(self, MixedLayerModel.MixedLayerModel mlm)
-    cpdef update(self, MixedLayerModel.MixedLayerModel mlm, TimeStepping.TimeStepping TS)
+cimport ReadProfiles
+# cimport TimeStepping
+# from NetCDFIO cimport NetCDFIO_Stats
 
 
 cdef class Radiation:
@@ -59,10 +43,11 @@ cdef class Radiation:
         double [:] cfc22vmr
         double [:] ccl4vmr
         double IsdacCC_dT
+        str out_file
 
 
-    cpdef initialize(self, MixedLayerModel.MixedLayerModel mlm, NetCDFIO_Stats NS)
-    cpdef initialize_profiles(self, MixedLayerModel.MixedLayerModel mlm)
-    cpdef update(self, MixedLayerModel.MixedLayerModel mlm, TimeStepping.TimeStepping TS)
-    cdef update_RRTM(self, MixedLayerModel.MixedLayerModel mlm)
-    cpdef stats_io(self, NetCDFIO_Stats NS)
+    cpdef initialize(self, ReadProfiles.ReadProfiles pf)
+    cpdef initialize_profiles(self, ReadProfiles.ReadProfiles pf)
+    cpdef update(self, ReadProfiles.ReadProfiles pf, )
+    cdef update_RRTM(self, ReadProfiles.ReadProfiles pf)
+    # cpdef stats_io(self, NetCDFIO_Stats NS)
