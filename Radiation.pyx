@@ -88,7 +88,7 @@ cdef class Radiation:
         # self.coszen = np.cos(70./180*np.pi)/np.pi
 
 
-        self.adif = 0.06
+        # self.adif = 0.06
         # self.adir = 0.38
         self.uniform_reliq = False
 
@@ -397,6 +397,7 @@ cdef class Radiation:
 
         self.coszen = pf.toa_sw/self.scon
         self.adir = pf.albedo
+        self.adif = pf.albedo
 
         cdef:
             Py_ssize_t nz = pf.nz
