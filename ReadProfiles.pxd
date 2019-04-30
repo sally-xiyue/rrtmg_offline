@@ -40,6 +40,7 @@ cdef class ReadProfiles:
         bint fix_qv
         bint fix_cloud
         bint fix_albedo
+        bint no_ice
 
     cdef public:
         Py_ssize_t count

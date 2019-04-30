@@ -107,7 +107,7 @@ cdef class Radiation:
 
         # self.bl = ReadProfiles.boundary_layer_profiles(namelist)
 
-        self.out_file = str(namelist['output']['file'])
+        # self.out_file = str(namelist['output']['file'])
 
         return
 

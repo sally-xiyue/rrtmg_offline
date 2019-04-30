@@ -27,10 +27,26 @@ cdef class ReadProfiles:
         self.path_plus_file = str(namelist['input']['path'])+str(namelist['input']['file'])
         print(self.path_plus_file)
 
-        if str(namelist['input']['case']) == str(namelist['input']['albedo_case']):
+        self.fix_T = namelist['input']['fix_T']
+        self.fix_qv = namelist['input']['fix_qv']
+        self.fix_cloud = namelist['input']['fix_cloud']
+        self.fix_albedo = namelist['input']['fix_albedo']
+        self.no_ice = namelist['input']['no_ice']
+
+        if self.no_ice:
+            self.out_file = str(namelist['input']['path'])+'RRTM_noice_'+str(namelist['input']['file'])
+        elif str(namelist['input']['case']) == str(namelist['input']['albedo_case']):
             self.out_file = str(namelist['input']['path'])+'RRTM_'+str(namelist['input']['file'])
+        elif self.fix_T and self.fix_qv:
+            self.out_file = str(namelist['input']['path'])+'RRTM_albedo_fixTqv_'+str(namelist['input']['file'])
+        elif self.fix_T:
+            self.out_file = str(namelist['input']['path'])+'RRTM_albedo_fixT_'+str(namelist['input']['file'])
+        elif self.fix_qv:
+            self.out_file = str(namelist['input']['path'])+'RRTM_albedo_fixqv_'+str(namelist['input']['file'])
         else:
             self.out_file = str(namelist['input']['path'])+'RRTM_albedo_'+str(namelist['input']['file'])
+
+
         self.path_plus_file_albedo = str(namelist['input']['albedo_path'])+str(namelist['input']['albedo_file'])
 
 
@@ -50,17 +66,6 @@ cdef class ReadProfiles:
         self.count = 0
         self.average = namelist['input']['time_average']
 
-        self.fix_T = namelist['input']['fix_T']
-        self.fix_qv = namelist['input']['fix_qv']
-        self.fix_cloud = namelist['input']['fix_cloud']
-        self.fix_albedo = namelist['input']['fix_albedo']
-
-        if self.fix_T:
-            self.out_file = str(namelist['input']['path'])+'RRTM_albedo_fixT_'+str(namelist['input']['file'])
-        if self.fix_qv:
-            self.out_file = str(namelist['input']['path'])+'RRTM_albedo_fixqv_'+str(namelist['input']['file'])
-        if self.fix_T and self.fix_qv:
-            self.out_file = str(namelist['input']['path'])+'RRTM_albedo_fixTqv_'+str(namelist['input']['file'])
 
 
     cpdef initialize(self):
@@ -134,7 +139,11 @@ cdef class ReadProfiles:
                 self.albedo = self.ts_grp['surface_albedo'][self.count]
 
             self.ql = self.profile_grp['ql_mean'][self.count, :]
-            self.qi = self.profile_grp['qi_mean'][self.count, :]
+
+            if self.no_ice:
+                self.qi = np.zeros_like(self.qv)
+            else:
+                self.qi = self.profile_grp['qi_mean'][self.count, :]
 
             self.toa_sw = self.ts_grp['toa_sw_flux'][self.count]
             # print(self.toa_sw)

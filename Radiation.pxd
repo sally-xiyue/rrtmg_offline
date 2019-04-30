@@ -43,7 +43,7 @@ cdef class Radiation:
         double [:] cfc22vmr
         double [:] ccl4vmr
         double IsdacCC_dT
-        str out_file
+        # str out_file
 
 
     cpdef initialize(self, ReadProfiles.ReadProfiles pf)
