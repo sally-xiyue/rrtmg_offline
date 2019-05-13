@@ -15,7 +15,7 @@ def main():
         namelist = GCMVarying()
     else:
         print('Not a valid case name')
-        exit()
+        exit()0
 
     write_file(namelist)
 
@@ -25,15 +25,15 @@ def GCMVarying():
     namelist = {}
 
     namelist['input'] = {}
-    namelist['input']['path'] = '/Users/sallyz/Dropbox/WORK/GCM/output/Output.GCMVarying_seaice_1_50x_lat70_lon180_Hu.696af/stats/'
-    namelist['input']['case'] = 'GCMVarying_seaice_1_50x_lat70_lon180_Hu'
+    namelist['input']['path'] = '/Users/sallyz/Dropbox/WORK/GCM/output/Output.GCMVarying_seaice_1_00x_lat70_lon90_zero.d3123/stats/'
+    namelist['input']['case'] = 'GCMVarying_seaice_1_00x_lat70_lon90_zero'
     namelist['input']['file'] = 'Stats.'+namelist['input']['case']+'.nc'
     namelist['input']['t1'] = 0*4
     namelist['input']['t2'] = 25*4
     namelist['input']['time_average'] = False
 
-    namelist['input']['albedo_path'] = '/Users/sallyz/Dropbox/WORK/GCM/output/Output.GCMVarying_seaice_1_00x_lat70_lon180_Hu.2a1d9/stats/'
-    namelist['input']['albedo_case'] = 'GCMVarying_seaice_1_00x_lat70_lon180_Hu'
+    namelist['input']['albedo_path'] = '/Users/sallyz/Dropbox/WORK/GCM/output/Output.GCMVarying_seaice_1_00x_lat70_lon90_zero.d3123/stats/'
+    namelist['input']['albedo_case'] = 'GCMVarying_seaice_1_00x_lat70_lon90_zero'
     namelist['input']['albedo_file'] = 'Stats.'+namelist['input']['albedo_case']+'.nc'
 
     namelist['input']['fix_T'] = True
@@ -43,7 +43,7 @@ def GCMVarying():
     namelist['input']['no_ice'] = False
 
     namelist['radiation'] = {}
-    namelist['radiation']['co2_factor'] = 1.0*4.0
+    namelist['radiation']['co2_factor'] = 1.0#*4.0
     namelist['radiation']['use_RRTM'] = True
     namelist['radiation']['frequency'] = 300.0
     namelist['radiation']['n_buffer'] = 2 # adjust according to dz

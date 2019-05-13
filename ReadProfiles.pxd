@@ -17,6 +17,7 @@ cdef class ReadProfiles:
         double [:] rho
         double toa_sw
         double albedo
+        double [:] cloud_fraction
 
         Py_ssize_t t1
         Py_ssize_t t2

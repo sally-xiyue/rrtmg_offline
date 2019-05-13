@@ -139,6 +139,7 @@ cdef class ReadProfiles:
                 self.albedo = self.ts_grp['surface_albedo'][self.count]
 
             self.ql = self.profile_grp['ql_mean'][self.count, :]
+            self.cloud_fraction = self.profile_grp['cloud_fraction_mixed_phase'][self.count, :]
 
             if self.no_ice:
                 self.qi = np.zeros_like(self.qv)
