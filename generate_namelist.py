@@ -15,7 +15,7 @@ def main():
         namelist = GCMVarying()
     else:
         print('Not a valid case name')
-        exit()0
+        exit()
 
     write_file(namelist)
 
