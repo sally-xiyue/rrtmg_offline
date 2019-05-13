@@ -36,7 +36,7 @@ cdef class ReadProfiles:
         if self.no_ice:
             self.out_file = str(namelist['input']['path'])+'RRTM_noice_'+str(namelist['input']['file'])
         elif str(namelist['input']['case']) == str(namelist['input']['albedo_case']):
-            self.out_file = str(namelist['input']['path'])+'RRTM_'+str(namelist['input']['file'])
+            self.out_file = str(namelist['input']['path'])+'RRTM_mcica_'+str(namelist['input']['file'])
         elif self.fix_T and self.fix_qv:
             self.out_file = str(namelist['input']['path'])+'RRTM_albedo_fixTqv_'+str(namelist['input']['file'])
         elif self.fix_T:
@@ -139,7 +139,7 @@ cdef class ReadProfiles:
                 self.albedo = self.ts_grp['surface_albedo'][self.count]
 
             self.ql = self.profile_grp['ql_mean'][self.count, :]
-            self.cloud_fraction = self.profile_grp['cloud_fraction_mixed_phase'][self.count, :]
+            self.cloud_fraction = self.profile_grp['cloud_fraction'][self.count, :]
 
             if self.no_ice:
                 self.qi = np.zeros_like(self.qv)

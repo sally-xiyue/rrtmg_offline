@@ -1,8 +1,9 @@
 module rrtmg_sw_wrapper
 
 use iso_c_binding, only: c_double, c_int
-use parrrsw, only : nbndsw, naerec
+use parrrsw, only : nbndsw, naerec, ngptsw
 use rrtmg_sw_init, only: rrtmg_sw_ini
+use mcica_subcol_gen_sw,  only: mcica_subcol_sw
 use rrtmg_sw_rad,  only: rrtmg_sw
 
 implicit none
@@ -15,6 +16,94 @@ subroutine c_rrtmg_sw_init(cpdair) bind(c)
 end subroutine c_rrtmg_sw_init
 
 
+subroutine c_mcica_subcol_sw &
+           (iplon, ncol, nlay, icld, permuteseed, irng, play, &
+            cldfrac, ciwp, clwp, rei, rel, tauc, ssac, asmc, fsfc, &
+            cldfmcl, ciwpmcl, clwpmcl, reicmcl, relqmcl, &
+            taucmcl, ssacmcl, asmcmcl, fsfcmcl) bind(c)
+      integer(c_int), intent(in) :: iplon           ! column/longitude dimension
+      integer(c_int), intent(in) :: ncol            ! number of columns
+      integer(c_int), intent(in) :: nlay            ! number of model layers
+      integer(c_int), intent(in) :: icld            ! clear/cloud, cloud overlap flag
+      integer(c_int), intent(in) :: permuteseed     ! if the cloud generator is called multiple times,
+                                                      ! permute the seed between
+                                                      ! each call;
+                                                      ! between calls for LW and
+                                                      ! SW, recommended
+                                                      ! permuteseed differs by
+                                                      ! 'ngpt'
+      integer(c_int), intent(inout) :: irng         ! flag for random number generator
+                                                      !  0 = kissvec
+                                                      !  1 = Mersenne Twister
+
+! Atmosphere
+      real(c_double), intent(in) :: play(ncol,nlay)          ! layer pressures (mb)
+                                                      !    Dimensions:
+                                                      !    (ncol,nlay)
+
+! Atmosphere/clouds - cldprop
+      real(c_double), intent(in) :: cldfrac(ncol,nlay)       ! layer cloud fraction
+                                                      !    Dimensions:
+                                                      !    (ncol,nlay)
+      real(c_double), intent(in) :: tauc(ngptsw,ncol,nlay)        ! in-cloud optical depth
+                                                      !    Dimensions:
+                                                      !    (nbndsw,ncol,nlay)
+      real(c_double), intent(in) :: ssac(ngptsw,ncol,nlay)        ! in-cloud single scattering albedo (non-delta scaled)
+                                                      !    Dimensions:
+                                                      !    (nbndsw,ncol,nlay)
+      real(c_double), intent(in) :: asmc(ngptsw,ncol,nlay)        ! in-cloud asymmetry parameter (non-delta scaled)
+                                                      !    Dimensions:
+                                                      !    (nbndsw,ncol,nlay)
+      real(c_double), intent(in) :: fsfc(ngptsw,ncol,nlay)        ! in-cloud forward scattering fraction (non-delta scaled)
+                                                      !    Dimensions:
+                                                      !    (nbndsw,ncol,nlay)
+      real(c_double), intent(in) :: ciwp(ncol,nlay)          ! in-cloud ice water path
+                                                      !    Dimensions:
+                                                      !    (ncol,nlay)
+      real(c_double), intent(in) :: clwp(ncol,nlay)          ! in-cloud liquid water path
+                                                      !    Dimensions:
+                                                      !    (ncol,nlay)
+      real(c_double), intent(in) :: rei(ncol,nlay)           ! cloud ice particle size
+                                                      !    Dimensions:
+                                                      !    (ncol,nlay)
+      real(c_double), intent(in) :: rel(ncol,nlay)           ! cloud liquid particle size
+                                                      !    Dimensions:
+                                                      !    (ncol,nlay)
+      real(c_double), intent(out) :: cldfmcl(ngptsw,ncol,nlay)    ! cloud fraction [mcica]
+                                                      !    Dimensions:
+                                                      !    (ngptsw,ncol,nlay)
+      real(c_double), intent(out) :: ciwpmcl(ngptsw,ncol,nlay)    ! in-cloud ice water path [mcica]
+                                                      !    Dimensions:
+                                                      !    (ngptsw,ncol,nlay)
+      real(c_double), intent(out) :: clwpmcl(ngptsw,ncol,nlay)    ! in-cloud liquid water path [mcica]
+                                                      !    Dimensions:
+                                                      !    (ngptsw,ncol,nlay)
+      real(c_double), intent(out) :: relqmcl(ncol,nlay)      ! liquid particle size (microns)
+                                                      !    Dimensions:
+                                                      !    (ncol,nlay)
+      real(c_double), intent(out) :: reicmcl(ncol,nlay)      ! ice partcle size (microns)
+                                                      !    Dimensions:
+                                                      !    (ncol,nlay)
+      real(c_double), intent(out) :: taucmcl(ngptsw,ncol,nlay)    ! in-cloud optical depth [mcica]
+                                                      !    Dimensions:
+                                                      !    (ngptsw,ncol,nlay)
+      real(c_double), intent(out) :: ssacmcl(ngptsw,ncol,nlay)    ! in-cloud single scattering albedo [mcica]
+                                                      !    Dimensions:
+                                                      !    (ngptsw,ncol,nlay)
+      real(c_double), intent(out) :: asmcmcl(ngptsw,ncol,nlay)    ! in-cloud asymmetry parameter [mcica]
+                                                      !    Dimensions:
+                                                      !    (ngptsw,ncol,nlay)
+      real(c_double), intent(out) :: fsfcmcl(ngptsw,ncol,nlay)    ! in-cloud forward scattering fraction [mcica]
+                                                      !    Dimensions:
+                                                      !    (ngptsw,ncol,nlay)
+
+      call mcica_subcol_sw &
+           (iplon, ncol, nlay, icld, permuteseed, irng, play, &
+            cldfrac, ciwp, clwp, rei, rel, tauc, ssac, asmc, fsfc, &
+            cldfmcl, ciwpmcl, clwpmcl, reicmcl, relqmcl, &
+            taucmcl, ssacmcl, asmcmcl, fsfcmcl)
+end subroutine c_mcica_subcol_sw
+
 subroutine c_rrtmg_sw &
             (ncol    ,nlay    ,icld    ,iaer    , &
              play    ,plev    ,tlay    ,tlev    ,tsfc    , &
@@ -26,8 +115,8 @@ subroutine c_rrtmg_sw &
              cicewp  ,cliqwp  ,reice   ,reliq   , &
              tauaer  ,ssaaer  ,asmaer  ,ecaer   , &
              swuflx  ,swdflx  ,swhr    ,swuflxc ,swdflxc ,swhrc) bind(c)
-             
-      integer(c_int), intent(in) :: ncol            ! Number of horizontal columns     
+
+      integer(c_int), intent(in) :: ncol            ! Number of horizontal columns
       integer(c_int), intent(in) :: nlay            ! Number of model layers
       integer(c_int), intent(inout) :: icld         ! Cloud overlap method
                                                       !    0: Clear only
@@ -37,7 +126,7 @@ subroutine c_rrtmg_sw &
       integer(c_int), intent(inout) :: iaer         ! Aerosol option flag
                                                       !    0: No aerosol
                                                       !    6: ECMWF method
-                                                      !    10:Input aerosol optical 
+                                                      !    10:Input aerosol optical
                                                       !       properties
 
       real(c_double), intent(in) :: play(ncol,nlay)          ! Layer pressures (hPa, mb)
@@ -82,25 +171,25 @@ subroutine c_rrtmg_sw &
       integer(c_int), intent(in) :: iceflgsw        ! Flag for ice particle specification
       integer(c_int), intent(in) :: liqflgsw        ! Flag for liquid droplet specification
 
-      real(c_double), intent(in) :: cldfr(ncol,nlay)         ! Cloud fraction
+      real(c_double), intent(in) :: cldfr(ngptsw, ncol,nlay)         ! Cloud fraction
                                                       !    Dimensions: (ncol,nlay)
-      real(c_double), intent(in) :: taucld(nbndsw,ncol,nlay)      ! In-cloud optical depth
+      real(c_double), intent(in) :: taucld(ngptsw,ncol,nlay)      ! In-cloud optical depth
                                                       !    Dimensions: (nbndsw,ncol,nlay)
-      real(c_double), intent(in) :: ssacld(nbndsw,ncol,nlay)      ! In-cloud single scattering albedo
+      real(c_double), intent(in) :: ssacld(ngptsw,ncol,nlay)      ! In-cloud single scattering albedo
                                                       !    Dimensions: (nbndsw,ncol,nlay)
-      real(c_double), intent(in) :: asmcld(nbndsw,ncol,nlay)      ! In-cloud asymmetry parameter
+      real(c_double), intent(in) :: asmcld(ngptsw,ncol,nlay)      ! In-cloud asymmetry parameter
                                                       !    Dimensions: (nbndsw,ncol,nlay)
-      real(c_double), intent(in) :: fsfcld(nbndsw,ncol,nlay)      ! In-cloud forward scattering fraction
+      real(c_double), intent(in) :: fsfcld(ngptsw,ncol,nlay)      ! In-cloud forward scattering fraction
                                                       !    Dimensions: (nbndsw,ncol,nlay)
-      real(c_double), intent(in) :: cicewp(ncol,nlay)        ! In-cloud ice water path (g/m2)
+      real(c_double), intent(in) :: cicewp(ngptsw, ncol,nlay)        ! In-cloud ice water path (g/m2)
                                                       !    Dimensions: (ncol,nlay)
-      real(c_double), intent(in) :: cliqwp(ncol,nlay)        ! In-cloud liquid water path (g/m2)
+      real(c_double), intent(in) :: cliqwp(ngptsw,ncol,nlay)        ! In-cloud liquid water path (g/m2)
                                                       !    Dimensions: (ncol,nlay)
       real(c_double), intent(in) :: reice(ncol,nlay)         ! Cloud ice effective radius (microns)
                                                       !    Dimensions: (ncol,nlay)
                                                       ! specific definition of reice depends on setting of iceflgsw:
                                                       ! iceflgsw = 0: (inactive)
-                                                      !              
+                                                      !
                                                       ! iceflgsw = 1: ice effective radius, r_ec, (Ebert and Curry, 1992),
                                                       !               r_ec range is limited to 13.0 to 130.0 microns
                                                       ! iceflgsw = 2: ice effective radius, r_k, (Key, Streamer Ref. Manual, 1996)
@@ -112,16 +201,16 @@ subroutine c_rrtmg_sw &
                                                       !    Dimensions: (ncol,nlay)
       real(c_double), intent(in) :: tauaer(ncol,nlay,nbndsw)      ! Aerosol optical depth (iaer=10 only)
                                                       !    Dimensions: (ncol,nlay,nbndsw)
-                                                      ! (non-delta scaled)      
+                                                      ! (non-delta scaled)
       real(c_double), intent(in) :: ssaaer(ncol,nlay,nbndsw)      ! Aerosol single scattering albedo (iaer=10 only)
                                                       !    Dimensions: (ncol,nlay,nbndsw)
-                                                      ! (non-delta scaled)      
+                                                      ! (non-delta scaled)
       real(c_double), intent(in) :: asmaer(ncol,nlay,nbndsw)      ! Aerosol asymmetry parameter (iaer=10 only)
                                                       !    Dimensions: (ncol,nlay,nbndsw)
-                                                      ! (non-delta scaled)      
+                                                      ! (non-delta scaled)
       real(c_double), intent(in) :: ecaer(ncol,nlay,naerec)       ! Aerosol optical depth at 0.55 micron (iaer=6 only)
                                                       !    Dimensions: (ncol,nlay,naerec)
-                                                      ! (non-delta scaled)      
+                                                      ! (non-delta scaled)
 
 ! ----- Output -----
 
@@ -137,9 +226,9 @@ subroutine c_rrtmg_sw &
                                                       !    Dimensions: (ncol,nlay+1)
       real(c_double), intent(out) :: swhrc(ncol,nlay)        ! Clear sky shortwave radiative heating rate (K/d)
                                                       !    Dimensions: (ncol,nlay)
-                                                      
-    
-    
+
+
+
     call rrtmg_sw &
             (ncol    ,nlay    ,icld    ,iaer    , &    ! idelm added by ZTAN
              play    ,plev    ,tlay    ,tlev    ,tsfc    , &
@@ -152,6 +241,5 @@ subroutine c_rrtmg_sw &
              tauaer  ,ssaaer  ,asmaer  ,ecaer   , &
              swuflx  ,swdflx  ,swhr    ,swuflxc ,swdflxc ,swhrc)
 end subroutine c_rrtmg_sw
-
 
 end module
