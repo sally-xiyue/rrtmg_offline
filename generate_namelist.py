@@ -13,6 +13,8 @@ def main():
 
     if case_name == 'GCMVarying':
         namelist = GCMVarying()
+    elif case_name == 'IsdacCC':
+        namelist = IsdacCC()
     else:
         print('Not a valid case name')
         exit()
@@ -52,6 +54,51 @@ def GCMVarying():
     namelist['meta'] = {}
     namelist['meta']['simname'] = 'GCMVarying'
     namelist['meta']['casename'] = 'GCMVarying'
+
+    return namelist
+
+
+def IsdacCC():
+
+    namelist = {}
+
+    namelist['input'] = {}
+    namelist['input']['path'] = '/Users/sallyz/Dropbox/WORK/ISDAC/output/nudge/Output.IsdacCC_nudge_mean_dSST_8_dTi_9_Hfr_60.18845/stats/'
+    namelist['input']['case'] = 'IsdacCC_nudge_mean_dSST_8_dTi_9_Hfr_60'
+    namelist['input']['file'] = 'Stats.'+namelist['input']['case']+'.nc'
+    namelist['input']['t1'] = 0*4
+    namelist['input']['t2'] = 25*4
+    namelist['input']['time_average'] = False
+
+    namelist['input']['albedo_path'] = namelist['input']['path']
+    namelist['input']['albedo_case'] = namelist['input']['case']
+    namelist['input']['SST'] = 265.0+8.0
+
+    # namelist['input']['albedo_path'] = '/Users/sallyz/Dropbox/WORK/ISDAC/output/nudge/Output.IsdacCC_nudge_mean_dSST_0_dTi_5_Hfr_60.f81a6/stats/'
+    # namelist['input']['albedo_case'] = 'IsdacCC_nudge_mean_dSST_0_dTi_5_Hfr_60'
+    # namelist['input']['SST'] = 265.0
+
+    namelist['input']['albedo_file'] = 'Stats.'+namelist['input']['albedo_case']+'.nc'
+
+    namelist['input']['fix_T'] = True
+    namelist['input']['fix_qv'] = True
+    namelist['input']['fix_cloud'] = False
+    namelist['input']['fix_albedo'] = True
+    namelist['input']['no_ice'] = False
+
+
+    namelist['radiation'] = {}
+    namelist['radiation']['co2_factor'] = 1.0
+    namelist['radiation']['use_RRTM'] = True
+    namelist['radiation']['frequency'] = 300.0
+    namelist['radiation']['n_buffer'] = 15 # adjust according to dz
+    namelist['radiation']['stretch_factor'] = 1.0 # adjust according to dz
+    namelist['radiation']['patch_pressure'] = 600.0*100.0
+    namelist['radiation']['solar_constant'] = 1360.0
+
+    namelist['meta'] = {}
+    namelist['meta']['simname'] = 'IsdacCC'
+    namelist['meta']['casename'] = 'IsdacCC'
 
     return namelist
 

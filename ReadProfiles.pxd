@@ -15,6 +15,7 @@ cdef class ReadProfiles:
         double [:] qi
         double [:] qt
         double [:] rho
+        double [:] cloud_fraction
         double toa_sw
         double albedo
 

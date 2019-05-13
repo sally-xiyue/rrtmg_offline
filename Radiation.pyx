@@ -71,7 +71,10 @@ cdef class Radiation:
         except:
             self.stretch_factor = 1.0
 
-        self.patch_pressure = 400.00
+        try:
+            self.patch_pressure = namelist['radiation']['patch_pressure']
+        except:
+            self.patch_pressure = 400.00
 
         # Namelist options related to gas concentrations
         try:
@@ -84,7 +87,11 @@ cdef class Radiation:
         # Namelist options related to insolation
         self.dyofyr = 0#80
         self.adjes = 1.0
-        self.scon = 1365.0
+
+        try:
+            self.scon = namelist['radiation']['solar_constant']
+        except:
+            self.scon = 1365.0
         # self.coszen = np.cos(70./180*np.pi)/np.pi
 
 
@@ -396,6 +403,7 @@ cdef class Radiation:
     cdef update_RRTM(self, ReadProfiles.ReadProfiles pf):
 
         self.coszen = pf.toa_sw/self.scon
+        # print(self.coszen)
         self.adir = pf.albedo
         self.adif = pf.albedo
 
@@ -480,7 +488,12 @@ cdef class Radiation:
                                *1.0e3*(self.pi_full[k] - self.pi_full[k+1])/g)
             # if pf.ql[k] + pf.qi[k] > ql_threshold:
             if pf.ql[k] > ql_threshold:
-                cldfr_in[k] = 1.0
+                cldfr_in[k] = 1.0 #pf.cloud_fraction[k]
+            #     # print(cldfr_in[k], pf.cloud_fraction[k])
+
+            # cldfr_in[k] = pf.cloud_fraction[k]
+            # if cldfr_in[k] < ql_threshold:
+            #     cldfr_in[k] = 0.0
 
 
         with nogil:
@@ -502,7 +515,7 @@ cdef class Radiation:
                 else:
                     reliq_in[k] = ((3.0*self.p_full[k]/Rd/tlay_in[k]*rl_full[k]/
                                         fmax(cldfr_in[k],1.0e-6))/(4.0*pi*1.0e3*100.0))**(1.0/3.0)
-                    reliq_in[k] = fmin(fmax(reliq_in[ k]*rv_to_reff, 2.5), 60.0)
+                    reliq_in[k] = fmin(fmax(reliq_in[k]*rv_to_reff, 2.5), 60.0)
 
                 # Boudala et al. (2002) Eqn 10a, this is dge (generalized effective size),
                 # and is what iceflglw=3 calls for. Will only work with iceflglw=iceflgsw=3!
@@ -511,6 +524,8 @@ cdef class Radiation:
                                       * exp(0.013*(tlay_in[k] - 273.16))
                 reice_in[k] = fmin(fmax(reice_in[k], 5.0), 140.0) # Threshold from rrtmg sw instruction
 
+                # with gil:
+                #     print(reliq_in[k], cldfr_in[k], pf.cloud_fraction[k], cliqwp_in[k])
 
             with gil:
                 tlev_in[0] = pf.t_surface
@@ -613,6 +628,7 @@ cdef class Radiation:
              &uflx_sw_out[0]    ,&dflx_sw_out[0]    ,&hr_sw_out[0]      ,&uflxc_sw_out[0]   ,&dflxc_sw_out[0], &hrc_sw_out[0])
 
         # print('Done RRTM SW!')
+
         # for k in xrange(nz):
         #     self.heating_rate[k] = (hr_lw_out[k] + hr_sw_out[k]) * pf.rho[k] * cpd/86400.0
         #     self.net_lw_flux[k] = uflx_lw_out[k] - dflx_lw_out[k]

@@ -66,6 +66,11 @@ cdef class ReadProfiles:
         self.count = 0
         self.average = namelist['input']['time_average']
 
+        try:
+            self.t_surface = namelist['input']['SST']
+        except:
+            pass
+
 
 
     cpdef initialize(self):
@@ -123,29 +128,33 @@ cdef class ReadProfiles:
         else:
             if self.fix_T:
                 self.temperature = self.profile_grp2['temperature_mean'][self.count, :]
-                self.t_surface = self.ts_grp2['surface_temperature'][self.count]
+                try:
+                    self.t_surface = self.ts_grp2['surface_temperature'][self.count]
+                except:
+                    pass
             else:
                 self.temperature = self.profile_grp['temperature_mean'][self.count, :]
-                self.t_surface = self.ts_grp['surface_temperature'][self.count]
+                try:
+                    self.t_surface = self.ts_grp['surface_temperature'][self.count]
+                except:
+                    pass
 
             if self.fix_qv:
                 self.qv = self.profile_grp2['qv_mean'][self.count, :]
             else:
                 self.qv = self.profile_grp['qv_mean'][self.count, :]
 
-            if self.fix_albedo:
-                self.albedo = self.ts_grp2['surface_albedo'][self.count]
-            else:
-                self.albedo = self.ts_grp['surface_albedo'][self.count]
+            self.albedo = 0.85
 
             self.ql = self.profile_grp['ql_mean'][self.count, :]
+            self.cloud_fraction = self.profile_grp['cloud_fraction_mixed_phase'][self.count, :]
 
             if self.no_ice:
                 self.qi = np.zeros_like(self.qv)
             else:
                 self.qi = self.profile_grp['qi_mean'][self.count, :]
 
-            self.toa_sw = self.ts_grp['toa_sw_flux'][self.count]
+            self.toa_sw = self.ts_grp['toa_sw_flux_down'][self.count]
             # print(self.toa_sw)
 
 
