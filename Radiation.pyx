@@ -5,7 +5,7 @@
 #cython: cdivision=True
 
 
-import pylab as plt
+# import pylab as plt
 import numpy as np
 cimport numpy as np
 import netCDF4 as nc
@@ -425,7 +425,7 @@ cdef class Radiation:
             double [:] ccl4vmr_in = np.zeros((nz_full,),dtype=np.double,order='F')
             double [:,:] emis_in = np.ones((n_pencils,16),dtype=np.double,order='F') * 0.95
             double [:] cldfr_in  = np.zeros((nz_full,),dtype=np.double,order='F')
-            double [:] cldfr_part  = np.zeros((nz_full,),dtype=np.double,order='F')
+            # double [:] cldfr_part  = np.zeros((nz_full,),dtype=np.double,order='F')
             double [:] cicewp_in = np.zeros((nz_full,),dtype=np.double,order='F')
             double [:] cliqwp_in = np.zeros((nz_full,),dtype=np.double,order='F')
             double [:] reice_in  = np.zeros((nz_full,),dtype=np.double,order='F')
@@ -473,17 +473,17 @@ cdef class Radiation:
             tlay_in[k] = pf.temperature[k]
             h2ovmr_in[k] = pf.qv[k]/ (1.0 - pf.qv[k])* Rv/Rd * self.h2o_factor
             rl_full[k] = (pf.ql[k])/ (1.0 - pf.qv[k])
-            # ri_full[k] = (pf.qi[k])/ (1.0 - pf.qv[k])
-            ri_full[k] = 0.0
+            ri_full[k] = (pf.qi[k])/ (1.0 - pf.qv[k])
+            # ri_full[k] = 0.0
             cliqwp_in[k] = ((pf.ql[k])/ (1.0 - pf.qv[k])
                                *1.0e3*(self.pi_full[k] - self.pi_full[k+1])/g)
             cicewp_in[k] = ((pf.qi[k])/ (1.0 - pf.qv[k])
                                *1.0e3*(self.pi_full[k] - self.pi_full[k+1])/g)
-            # if pf.ql[k] + pf.qi[k] > ql_threshold:
-            if pf.ql[k] > ql_threshold:
+            if pf.ql[k] + pf.qi[k] > ql_threshold:
+            # if pf.ql[k] > ql_threshold:
                 cldfr_in[k] = 1.0
 
-            cldfr_part[k] = pf.cloud_fraction[k]
+            # cldfr_part[k] = pf.cloud_fraction[k]
 
 
         with nogil:
@@ -504,13 +504,13 @@ cdef class Radiation:
                     reliq_in[k] = 14.0*cldfr_in[k]
                 else:
                     reliq_in[k] = ((3.0*self.p_full[k]/Rd/tlay_in[k]*rl_full[k]/
-                                        fmax(cldfr_part[k],1.0e-6))/(4.0*pi*1.0e3*100.0))**(1.0/3.0)
+                                        fmax(cldfr_in[k],1.0e-6))/(4.0*pi*1.0e3*100.0))**(1.0/3.0)
                     reliq_in[k] = fmin(fmax(reliq_in[k]*rv_to_reff, 2.5), 60.0)
 
                 # Boudala et al. (2002) Eqn 10a, this is dge (generalized effective size),
                 # and is what iceflglw=3 calls for. Will only work with iceflglw=iceflgsw=3!
                 reice_in[k] = 53.005 * ((self.p_full[k]/Rd/tlay_in[k]*ri_full[k]*1.0e3)/
-                                            fmax(cldfr_part[k],1.0e-6)) ** 0.06 \
+                                            fmax(cldfr_in[k],1.0e-6)) ** 0.06 \
                                       * exp(0.013*(tlay_in[k] - 273.16))
                 reice_in[k] = fmin(fmax(reice_in[k], 5.0), 140.0) # Threshold from rrtmg sw instruction
 

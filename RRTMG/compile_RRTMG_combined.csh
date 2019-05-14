@@ -22,7 +22,7 @@ mkdir -p obj_rrtmg
 cd obj_rrtmg
 
 # build RRTMG_LW
-gfortran-mp-8 -ffixed-line-length-none -freal-4-real-8 -fno-range-check -fPIC \
+gfortran-mp-5 -ffixed-line-length-none -freal-4-real-8 -fno-range-check -fPIC \
   -O3 -I${INC_NETCDF} -L${LIB_NETCDF} -lnetcdf -c \
   ${MPATH_LW}/parkind.f90 ${MPATH_LW}/parrrtm.f90 ${MPATH_LW}/rrlw_cld.f90 ${MPATH_LW}/rrlw_con.f90 \
   ${MPATH_LW}/rrlw_kg01.f90 ${MPATH_LW}/rrlw_kg02.f90 ${MPATH_LW}/rrlw_kg03.f90 ${MPATH_LW}/rrlw_kg04.f90 \
@@ -37,7 +37,7 @@ gfortran-mp-8 -ffixed-line-length-none -freal-4-real-8 -fno-range-check -fPIC \
   ${CPATH_LW}/rrtmg_lw_rad.nomcica.f90 ${BPATH}/rrtmg_lw_wrapper.f90
 
 # build RRTMG_SW - Note that parkind.f90 is the same as RRTMG_LW
-gfortran-mp-8 -ffixed-line-length-none -freal-4-real-8 -fno-range-check -fPIC \
+gfortran-mp-5 -ffixed-line-length-none -freal-4-real-8 -fno-range-check -fPIC \
   -O3 -I${INC_NETCDF} -L${LIB_NETCDF} -lnetcdf -c \
   ${MPATH_SW}/parkind.f90 ${MPATH_SW}/parrrsw.f90 ${MPATH_SW}/rrsw_aer.f90 ${MPATH_SW}/rrsw_cld.f90 ${MPATH_SW}/rrsw_con.f90 \
   ${MPATH_SW}/rrsw_kg16.f90 ${MPATH_SW}/rrsw_kg17.f90 ${MPATH_SW}/rrsw_kg18.f90 ${MPATH_SW}/rrsw_kg19.f90 \
